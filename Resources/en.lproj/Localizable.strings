@@ -1,0 +1,27 @@
+/* Kiwix iOS 6 English strings */
+"Library" = "Library";
+"Search" = "Search";
+"Bookmarks" = "Bookmarks";
+"Downloads" = "Downloads";
+"WiFiUpload" = "Wi-Fi Transfer";
+"NoArchivesTitle" = "No ZIM Archives Found";
+"NoArchivesMessage" = "Add .zim files via iTunes File Sharing, download them from the online catalog, or use Wi-Fi Transfer.";
+"SearchPlaceholder" = "Search articles...";
+"Searching" = "Searching...";
+"NoResults" = "No articles found";
+"ArticlesCount" = "%u articles";
+"SizeFormat" = "%.1f MB";
+"SizeFormatGB" = "%.2f GB";
+"Appearance" = "Appearance";
+"Light" = "Light";
+"Sepia" = "Sepia";
+"Dark" = "Dark";
+"Cancel" = "Cancel";
+"Download" = "Download";
+"Downloading" = "Downloading...";
+"Done" = "Done";
+"Error" = "Error";
+"OK" = "OK";
+"WiFiServerRunning" = "Open this address in your computer's browser:";
+"WiFiServerHint" = "Make sure your device and computer are on the same Wi-Fi network.";
+"StopServer" = "Stop";

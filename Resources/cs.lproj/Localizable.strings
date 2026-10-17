@@ -1,0 +1,27 @@
+/* Kiwix iOS 6 Czech strings */
+"Library" = "Knihovna";
+"Search" = "Hledat";
+"Bookmarks" = "Záložky";
+"Downloads" = "Stahování";
+"WiFiUpload" = "Přenos přes Wi-Fi";
+"NoArchivesTitle" = "Nenalezeny žádné ZIM archivy";
+"NoArchivesMessage" = "Přidejte .zim soubory přes iTunes Sdílení souborů, stáhněte je z online katalogu, nebo použijte Přenos přes Wi-Fi.";
+"SearchPlaceholder" = "Hledat články...";
+"Searching" = "Hledám...";
+"NoResults" = "Žádné články nenalezeny";
+"ArticlesCount" = "%u článků";
+"SizeFormat" = "%.1f MB";
+"SizeFormatGB" = "%.2f GB";
+"Appearance" = "Vzhled";
+"Light" = "Světlý";
+"Sepia" = "Sépie";
+"Dark" = "Tmavý";
+"Cancel" = "Zrušit";
+"Download" = "Stáhnout";
+"Downloading" = "Stahuji...";
+"Done" = "Hotovo";
+"Error" = "Chyba";
+"OK" = "OK";
+"WiFiServerRunning" = "Otevřete tuto adresu v prohlížeči na počítači:";
+"WiFiServerHint" = "Ujistěte se, že zařízení i počítač jsou na stejné Wi-Fi síti.";
+"StopServer" = "Zastavit";

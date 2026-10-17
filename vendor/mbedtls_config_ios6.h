@@ -1,0 +1,42 @@
+/*
+ * mbedTLS configuration for Kiwix on iOS 6 (armv7).
+ */
+#ifndef MBEDTLS_CONFIG_IOS6_H
+#define MBEDTLS_CONFIG_IOS6_H
+
+#include "mbedtls/mbedtls_config_default.h"
+
+/* TLS 1.2 and 1.3 client only */
+#undef MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_PSK_ENABLED
+#undef MBEDTLS_SSL_EARLY_DATA
+#undef MBEDTLS_SSL_PROTO_DTLS
+#undef MBEDTLS_SSL_SRV_C
+#undef MBEDTLS_SSL_COOKIE_C
+#undef MBEDTLS_SSL_TICKET_C
+#undef MBEDTLS_SSL_CACHE_C
+
+/* X.509 parse only */
+#undef MBEDTLS_X509_CREATE_C
+#undef MBEDTLS_X509_CRT_WRITE_C
+#undef MBEDTLS_X509_CSR_WRITE_C
+#undef MBEDTLS_X509_CSR_PARSE_C
+#undef MBEDTLS_PK_WRITE_C
+#undef MBEDTLS_PEM_WRITE_C
+
+/* Misc size reductions */
+#undef MBEDTLS_SELF_TEST
+#undef MBEDTLS_VERSION_FEATURES
+#undef MBEDTLS_TIMING_C
+#undef MBEDTLS_LMS_C
+#undef MBEDTLS_LMS_PRIVATE
+#undef MBEDTLS_PSA_CRYPTO_STORAGE_C
+#undef MBEDTLS_PSA_ITS_FILE_C
+#undef MBEDTLS_PSA_CRYPTO_SE_C
+
+/* Platform glue */
+#define MBEDTLS_ENTROPY_HARDWARE_ALT
+#define MBEDTLS_PLATFORM_MS_TIME_ALT
+#define MBEDTLS_THREADING_C
+#define MBEDTLS_THREADING_PTHREAD
+
+#endif /* MBEDTLS_CONFIG_IOS6_H */

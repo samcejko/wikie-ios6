@@ -1,0 +1,94 @@
+name: Build Wikie (iOS 6, armv7)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  THEOS: /home/runner/theos
+  THEOS_COMMIT: dd5c14bb9d91311e221d51b5bfb8c9e5948156db
+  TOOLCHAIN_RELEASE: test-210562a
+  SDK_RELEASE: master-146e41f
+  TOOLCHAIN_SHA256: a72a7a577e2fbe2838b6b5e9c72034fa7d114af96f0e1d4b016f18730ce4056e
+  SDK_SHA256: 39df195271aadab894e740ae957005b9af8090593399dffc9aa6204008de3cc1
+  THEOS_CACHE_KEY: theos-linux-v2
+  MBEDTLS_VERSION: "3.6.7"
+  MBEDTLS_SHA256: a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential fakeroot rsync curl perl zip unzip git libplist-utils libxml2
+
+      - name: Cache Theos and Toolchain
+        id: theos-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.THEOS }}
+          key: ${{ env.THEOS_CACHE_KEY }}-${{ env.THEOS_COMMIT }}-${{ env.TOOLCHAIN_RELEASE }}-${{ env.SDK_RELEASE }}
+
+      - name: Setup Theos
+        if: steps.theos-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --recursive https://github.com/theos/theos.git ${{ env.THEOS }}
+          cd ${{ env.THEOS }}
+          git checkout ${{ env.THEOS_COMMIT }}
+          mkdir -p toolchain/linux/iphone
+          curl -fsSL -o /tmp/toolchain.tar.xz "https://github.com/L1ghtmann/llvm-project/releases/download/${{ env.TOOLCHAIN_RELEASE }}/toolchain-linux-arm64.tar.xz" 2>/dev/null || \
+          curl -fsSL -o /tmp/toolchain.tar.xz "https://github.com/L1ghtmann/llvm-project/releases/download/${{ env.TOOLCHAIN_RELEASE }}/toolchain-linux-x86_64.tar.xz"
+          tar -xf /tmp/toolchain.tar.xz -C toolchain/linux/iphone --strip-components=1
+          curl -fsSL -o /tmp/sdks.zip "https://github.com/theos/sdks/archive/${{ env.SDK_RELEASE }}.zip"
+          unzip -q /tmp/sdks.zip -d /tmp/sdks
+          cp -r /tmp/sdks/sdks-*/*.sdk ${{ env.THEOS }}/sdks/
+
+      - name: Fetch Dependencies (mbedTLS and Zstd)
+        run: |
+          mkdir -p vendor/mbedtls vendor/zstd
+          # Build Zstandard single file decompressor
+          git clone --depth 1 https://github.com/facebook/zstd.git /tmp/zstd
+          python3 /tmp/zstd/build/single_file_libs/combine.py -r /tmp/zstd/lib -o vendor/zstd/zstddeclib.c /tmp/zstd/build/single_file_libs/zstddeclib-in.c
+          cp /tmp/zstd/lib/zstd.h vendor/zstd/
+          # Fetch mbedTLS
+          curl -fsSL -o /tmp/mbedtls.tar.bz2 "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-${{ env.MBEDTLS_VERSION }}/mbedtls-${{ env.MBEDTLS_VERSION }}.tar.bz2"
+          tar -xjf /tmp/mbedtls.tar.bz2 -C /tmp
+          cp -r /tmp/mbedtls-${{ env.MBEDTLS_VERSION }}/include /tmp/mbedtls-${{ env.MBEDTLS_VERSION }}/library vendor/mbedtls/
+          # Install iOS 6 custom mbedtls config
+          mv vendor/mbedtls/include/mbedtls/mbedtls_config.h vendor/mbedtls/include/mbedtls/mbedtls_config_default.h
+          cp vendor/mbedtls_config_ios6.h vendor/mbedtls/include/mbedtls/mbedtls_config.h
+
+      - name: Build Package
+        run: |
+          export THEOS=${{ env.THEOS }}
+          make package FINALPACKAGE=1
+
+      - name: Build IPA
+        run: |
+          mkdir -p Payload
+          cp -r .theos/_/Applications/Wikie.app Payload/
+          zip -r packages/Wikie-1.0.0.ipa Payload
+          rm -rf Payload
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Wikie-iOS6-Packages
+          path: |
+            packages/*.deb
+            packages/*.ipa

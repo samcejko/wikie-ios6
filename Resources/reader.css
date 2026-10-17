@@ -1,0 +1,111 @@
+/* Kiwix Reader CSS for iOS 6 UIWebView */
+body {
+    font-family: -apple-system-font, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    margin: 0;
+    padding: 14px 16px 40px 16px;
+    color: #222222;
+    background-color: #ffffff;
+    -webkit-text-size-adjust: 100%;
+    word-wrap: break-word;
+}
+
+/* Responsive images & tables */
+img, svg, video {
+    max-width: 100% !important;
+    height: auto !important;
+}
+
+table {
+    max-width: 100% !important;
+    display: block;
+    overflow-x: auto;
+    border-collapse: collapse;
+    margin: 12px 0;
+}
+
+th, td {
+    border: 1px solid #cccccc;
+    padding: 6px 8px;
+    font-size: 14px;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: bold;
+    color: #111111;
+    margin-top: 1.2em;
+    margin-bottom: 0.5em;
+    line-height: 1.25;
+}
+
+h1 { font-size: 24px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+h2 { font-size: 20px; border-bottom: 1px solid #ececec; padding-bottom: 4px; }
+h3 { font-size: 17px; }
+
+/* Links */
+a {
+    color: #0b57d0;
+    text-decoration: none;
+}
+a:visited {
+    color: #4b2685;
+}
+
+/* Code & Pre */
+pre, code {
+    font-family: Courier, monospace;
+    font-size: 13px;
+    background-color: #f6f8fa;
+    border-radius: 3px;
+}
+pre {
+    padding: 10px;
+    overflow-x: auto;
+    border: 1px solid #e1e4e8;
+}
+code {
+    padding: 2px 4px;
+}
+
+/* Blockquotes & Infoboxes */
+blockquote {
+    border-left: 3px solid #ccc;
+    margin: 12px 0;
+    padding-left: 12px;
+    color: #555555;
+}
+
+.infobox, .thumb, .tright, .tleft {
+    float: none !important;
+    margin: 12px auto !important;
+    width: auto !important;
+    max-width: 100% !important;
+}
+
+/* Themes */
+body.theme-sepia {
+    background-color: #fbf0d9 !important;
+    color: #3b2e2a !important;
+}
+body.theme-sepia a { color: #855325 !important; }
+body.theme-sepia th { background-color: #f2e2c0 !important; }
+body.theme-sepia th, body.theme-sepia td { border-color: #e2d2ae !important; }
+body.theme-sepia pre, body.theme-sepia code { background-color: #f5e7c8 !important; border-color: #e2d2ae !important; }
+
+body.theme-dark {
+    background-color: #181818 !important;
+    color: #dddddd !important;
+}
+body.theme-dark h1, body.theme-dark h2, body.theme-dark h3 { color: #f0f0f0 !important; border-color: #333333 !important; }
+body.theme-dark a { color: #6bb1ff !important; }
+body.theme-dark a:visited { color: #b78eff !important; }
+body.theme-dark th { background-color: #262626 !important; }
+body.theme-dark th, body.theme-dark td { border-color: #383838 !important; }
+body.theme-dark pre, body.theme-dark code { background-color: #222222 !important; border-color: #383838 !important; color: #eeeeee !important; }
+body.theme-dark blockquote { border-color: #444444 !important; color: #aaaaaa !important; }

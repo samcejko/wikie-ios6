@@ -1,0 +1,12 @@
+.DS_Store
+.theos/
+_theos/
+build/
+packages/
+*.deb
+*.ipa
+.bash_history
+tools/local.json
+vendor/mbedtls/
+vendor/zstd/
+vendor/xz/
