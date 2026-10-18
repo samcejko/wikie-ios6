@@ -187,6 +187,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Publish packages to the CI prerelease
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
