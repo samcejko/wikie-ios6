@@ -57,7 +57,7 @@
         if ([[[path pathExtension] lowercaseString] isEqualToString:@"zim"]) {
             // Move from Inbox to Documents
             NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-            NSString *docsDir = paths.firstObject;
+            NSString *docsDir = [paths count] > 0 ? [paths objectAtIndex:0] : nil;
             NSString *destPath = [docsDir stringByAppendingPathComponent:[path lastPathComponent]];
 
             [[NSFileManager defaultManager] removeItemAtPath:destPath error:nil];

@@ -32,7 +32,7 @@ Wikie_FILES := $(wildcard src/*.m) \
                $(MBEDTLS_FILES) \
                vendor/mbedtls_glue.c
 
-Wikie_FRAMEWORKS := UIKit Foundation CoreGraphics QuartzCore Security CFNetwork
+Wikie_FRAMEWORKS := UIKit Foundation CoreGraphics QuartzCore Security
 
 Wikie_CFLAGS := -Isrc -Isrc/ZIM -Isrc/Model -Isrc/Protocol -Isrc/UI \
                 -Isrc/UI/Library -Isrc/UI/Reader -Isrc/UI/Search -Isrc/UI/Catalog -Isrc/UI/Server \
@@ -66,6 +66,12 @@ before-package::
 		'command -v uicache >/dev/null 2>&1 && uicache -a >/dev/null 2>&1' \
 		'exit 0' > "$(THEOS_STAGING_DIR)/DEBIAN/postrm"
 	chmod 0755 "$(THEOS_STAGING_DIR)/DEBIAN/postinst" "$(THEOS_STAGING_DIR)/DEBIAN/postrm"
+else
+# The iOS 9.3 SDK places the NSURL* loading classes in CFNetwork; on iOS 6 they live in Foundation and dyld aborts at
+# launch when the binary asks CFNetwork for them. Change CFNetwork reference to Foundation and resign.
+after-stage::
+	install_name_tool -change /System/Library/Frameworks/CFNetwork.framework/CFNetwork /System/Library/Frameworks/Foundation.framework/Foundation "$(WIKIE_STAGED_BIN)" || true
+	ldid -S"$(THEOS_PROJECT_DIR)/Resources/entitlements.plist" "$(WIKIE_STAGED_BIN)"
 endif
 
 after-all::

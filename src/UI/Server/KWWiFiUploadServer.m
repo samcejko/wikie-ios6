@@ -218,7 +218,7 @@
             }
 
             NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-            NSString *docsDir = paths.firstObject;
+            NSString *docsDir = [paths count] > 0 ? [paths objectAtIndex:0] : nil;
             NSString *targetPath = [docsDir stringByAppendingPathComponent:filename];
 
             FILE *outFile = fopen([targetPath UTF8String], "wb");

@@ -25,3 +25,10 @@ NSString *KWFormattedFileSize(uint64_t bytes)
         return [NSString stringWithFormat:L(@"SizeFormat"), mb];
     }
 }
+
+@implementation NSArray (KWCompatibility)
+- (id)firstObject
+{
+    return [self count] > 0 ? [self objectAtIndex:0] : nil;
+}
+@end

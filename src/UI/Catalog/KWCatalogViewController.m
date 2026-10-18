@@ -117,7 +117,7 @@
     }
 
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *docsDir = paths.firstObject;
+    NSString *docsDir = [paths count] > 0 ? [paths objectAtIndex:0] : nil;
 
     if (![fileName hasSuffix:@".zim"]) {
         fileName = [fileName stringByAppendingPathExtension:@"zim"];

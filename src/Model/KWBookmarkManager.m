@@ -24,7 +24,8 @@
     self = [super init];
     if (self) {
         NSArray *paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES);
-        _filePath = [paths.firstObject stringByAppendingPathComponent:@"KiwixBookmarks.plist"];
+        NSString *libDir = [paths count] > 0 ? [paths objectAtIndex:0] : nil;
+        _filePath = [libDir stringByAppendingPathComponent:@"KiwixBookmarks.plist"];
         NSArray *saved = [NSArray arrayWithContentsOfFile:_filePath];
         if (saved) {
             _bookmarksList = [saved mutableCopy];

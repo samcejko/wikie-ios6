@@ -42,7 +42,7 @@
 
     // 1. App Documents directory
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *docsDir = paths.firstObject;
+    NSString *docsDir = [paths count] > 0 ? [paths objectAtIndex:0] : nil;
     if (docsDir) {
         NSArray *items = [fm contentsOfDirectoryAtPath:docsDir error:nil];
         for (NSString *item in items) {

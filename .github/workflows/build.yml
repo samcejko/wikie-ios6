@@ -186,9 +186,24 @@ jobs:
           path: build.log
           if-no-files-found: ignore
 
+      - name: Publish packages to the CI prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          gh release view ci-build >/dev/null 2>&1 || \
+            gh release create ci-build --prerelease --title "Latest CI build" \
+              --notes "Automatic build of the latest commit (armv7 for iOS 6, arm64 for iOS 14-17). Not a stable release." || true
+          gh release upload ci-build packages/*.ipa packages/*.deb --clobber
+          echo "uploaded to the ci-build prerelease:"; ls -la packages/*.ipa packages/*.deb
+
       - name: Publish to release (tags only)
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -e
+          gh release view "${{ github.ref_name }}" >/dev/null 2>&1 || \
+            gh release create "${{ github.ref_name }}" --title "Wikie ${{ github.ref_name }}" \
+              --notes "Release ${{ github.ref_name }}" || true
           gh release upload "${{ github.ref_name }}" packages/*.ipa packages/*.deb --clobber

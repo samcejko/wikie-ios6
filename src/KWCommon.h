@@ -39,3 +39,7 @@ enum {
 
 NSError *KWMakeError(NSInteger code, NSString *description);
 NSString *KWFormattedFileSize(uint64_t bytes);
+
+@interface NSArray (KWCompatibility)
+- (id)firstObject;
+@end
