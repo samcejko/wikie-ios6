@@ -1,4 +1,4 @@
-name: Build Wikie (iOS 6, armv7)
+name: Build Wikie (iOS 6 armv7 + iOS 14 arm64)
 
 on:
   push:
@@ -12,14 +12,26 @@ permissions:
 
 env:
   THEOS: /home/runner/theos
-  THEOS_CACHE_KEY: theos-linux-clang11-sdk93-v2
+  THEOS_CACHE_KEY: theos-linux-clang11-sdk93-sdk165-v2
   MBEDTLS_VERSION: "3.6.7"
 
 jobs:
   build:
-    name: ios6-armv7
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ios6-armv7
+            scheme: ""
+            suffix: ""
+            artifact: Wikie-packages
+          - name: ios14-arm64
+            scheme: rootless
+            suffix: "-arm64"
+            artifact: Wikie-packages-arm64
+    name: ${{ matrix.name }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,7 +40,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential fakeroot rsync curl perl zip unzip git libplist-utils libxml2 xz-utils
+            build-essential fakeroot rsync curl perl zip unzip git libplist-utils libxml2 xz-utils python3
 
       - name: Restore Theos cache
         id: theos-cache
@@ -37,7 +49,7 @@ jobs:
           path: /home/runner/theos
           key: ${{ env.THEOS_CACHE_KEY }}
 
-      - name: Install Theos, toolchain and the iOS 9.3 SDK
+      - name: Install Theos, toolchain and the iOS 9.3 and 16.5 SDKs
         if: steps.theos-cache.outputs.cache-hit != 'true'
         run: |
           set -e
@@ -57,20 +69,21 @@ jobs:
 
           echo "== SDKs =="
           RELEASE=$(curl -sS https://api.github.com/repos/theos/sdks/releases/latest)
-          SDK="9.3"
-          SDK_URL=$(echo "$RELEASE" | grep -o "https://[^\"]*iPhoneOS${SDK}\.sdk[^\"]*" | head -n1 || true)
-          echo "SDK $SDK asset: $SDK_URL"
-          if [ -n "$SDK_URL" ]; then
-            curl -sSL "$SDK_URL" -o /tmp/sdk.archive
-            (tar -xJf /tmp/sdk.archive -C "$THEOS/sdks/" 2>/dev/null || tar -xzf /tmp/sdk.archive -C "$THEOS/sdks/" 2>/dev/null || unzip -q /tmp/sdk.archive -d "$THEOS/sdks/")
-          fi
-          if [ ! -d "$THEOS/sdks/iPhoneOS${SDK}.sdk" ]; then
-            echo "Falling back to sparse checkout of theos/sdks for $SDK"
-            rm -rf /tmp/sdks
-            git clone --depth=1 --filter=blob:none --sparse https://github.com/theos/sdks.git /tmp/sdks
-            (cd /tmp/sdks && git sparse-checkout set "iPhoneOS${SDK}.sdk")
-            mv "/tmp/sdks/iPhoneOS${SDK}.sdk" "$THEOS/sdks/"
-          fi
+          for SDK in 9.3 16.5; do
+            SDK_URL=$(echo "$RELEASE" | grep -o "https://[^\"]*iPhoneOS${SDK}\.sdk[^\"]*" | head -n1 || true)
+            echo "SDK $SDK asset: $SDK_URL"
+            if [ -n "$SDK_URL" ]; then
+              curl -sSL "$SDK_URL" -o /tmp/sdk.archive
+              (tar -xJf /tmp/sdk.archive -C "$THEOS/sdks/" 2>/dev/null || tar -xzf /tmp/sdk.archive -C "$THEOS/sdks/" 2>/dev/null || unzip -q /tmp/sdk.archive -d "$THEOS/sdks/")
+            fi
+            if [ ! -d "$THEOS/sdks/iPhoneOS${SDK}.sdk" ]; then
+              echo "Falling back to sparse checkout of theos/sdks for $SDK"
+              rm -rf /tmp/sdks
+              git clone --depth=1 --filter=blob:none --sparse https://github.com/theos/sdks.git /tmp/sdks
+              (cd /tmp/sdks && git sparse-checkout set "iPhoneOS${SDK}.sdk")
+              mv "/tmp/sdks/iPhoneOS${SDK}.sdk" "$THEOS/sdks/"
+            fi
+          done
           ls "$THEOS/sdks"
 
       - name: Toolchain diagnostics
@@ -90,30 +103,32 @@ jobs:
             plistutil --help >/dev/null 2>&1 && echo "plistutil OK" || echo "plistutil still broken"
           fi
           SDK="$THEOS/sdks/iPhoneOS9.3.sdk"
-          LIBSYS="$SDK/usr/lib/libSystem.tbd"
-          test -f "$LIBSYS"
-          for lib in $(grep -o "/usr/lib/system/lib[A-Za-z0-9_]*\.dylib" "$LIBSYS" | sort -u); do
-            base="${lib%.dylib}"
-            if [ ! -f "$SDK$base.tbd" ] && [ ! -f "$SDK$lib" ]; then
-              mkdir -p "$(dirname "$SDK$base.tbd")"
-              printf -- '---\narchs:           [ armv7, armv7s, arm64 ]\nplatform:        ios\ninstall-name:    %s\ncurrent-version: 1.0\ncompatibility-version: 1.0\nexports:\n  - archs:           [ armv7, armv7s, arm64 ]\n    symbols:         [ ]\n...\n' "$lib" > "$SDK$base.tbd"
-              echo "stubbed $lib"
-            fi
-          done
+          if [ -d "$SDK" ]; then
+            LIBSYS="$SDK/usr/lib/libSystem.tbd"
+            test -f "$LIBSYS"
+            for lib in $(grep -o "/usr/lib/system/lib[A-Za-z0-9_]*\.dylib" "$LIBSYS" | sort -u); do
+              base="${lib%.dylib}"
+              if [ ! -f "$SDK$base.tbd" ] && [ ! -f "$SDK$lib" ]; then
+                mkdir -p "$(dirname "$SDK$base.tbd")"
+                printf -- '---\narchs:           [ armv7, armv7s, arm64 ]\nplatform:        ios\ninstall-name:    %s\ncurrent-version: 1.0\ncompatibility-version: 1.0\nexports:\n  - archs:           [ armv7, armv7s, arm64 ]\n    symbols:         [ ]\n...\n' "$lib" > "$SDK$base.tbd"
+                echo "stubbed $lib"
+              fi
+            done
 
-          LIBC="$SDK/usr/lib/system/libsystem_c.tbd"
-          ADD=""
-          for sym in _memcpy _memset _memmove _memcmp _memchr _strchr _strcmp _strncmp _strlen _strnlen _bzero \
-                     _strcpy _strncpy _strcat _strlcpy _strlcat _strstr _strrchr _strdup _memset_s _memset_pattern4 \
-                     _memset_pattern8 _memset_pattern16 _strncasecmp _strcasecmp; do
-            if ! grep -Eq "[[ ,]${sym}[], ]" "$LIBC" "$SDK/usr/lib/system/libsystem_platform.tbd"; then
-              ADD="${ADD}${sym}, "
+            LIBC="$SDK/usr/lib/system/libsystem_c.tbd"
+            ADD=""
+            for sym in _memcpy _memset _memmove _memcmp _memchr _strchr _strcmp _strncmp _strlen _strnlen _bzero \
+                       _strcpy _strncpy _strcat _strlcpy _strlcat _strstr _strrchr _strdup _memset_s _memset_pattern4 \
+                       _memset_pattern8 _memset_pattern16 _strncasecmp _strcasecmp; do
+              if ! grep -Eq "[[ ,]${sym}[], ]" "$LIBC" "$SDK/usr/lib/system/libsystem_platform.tbd"; then
+                ADD="${ADD}${sym}, "
+              fi
+            done
+            if [ -n "$ADD" ]; then
+              echo "adding to libsystem_c.tbd: $ADD"
+              sed -i "0,/symbols:            \[ /s//symbols:            [ ${ADD}/" "$LIBC"
+              grep -c "_memcpy" "$LIBC"
             fi
-          done
-          if [ -n "$ADD" ]; then
-            echo "adding to libsystem_c.tbd: $ADD"
-            sed -i "0,/symbols:            \[ /s//symbols:            [ ${ADD}/" "$LIBC"
-            grep -c "_memcpy" "$LIBC"
           fi
 
       - name: Fetch Dependencies (mbedTLS and Zstd)
@@ -130,11 +145,12 @@ jobs:
           cp vendor/mbedtls_config_ios6.h vendor/mbedtls/include/mbedtls/mbedtls_config.h
           echo "mbedTLS sources: $(ls vendor/mbedtls/library/*.c | wc -l)"
 
-      - name: Build Wikie
+      - name: Build (${{ matrix.name }})
         run: |
           set -o pipefail
           export PATH="$THEOS/toolchain/linux/iphone/bin:$THEOS/bin:$PATH"
           export THEOS=${{ env.THEOS }}
+          if [ -n "${{ matrix.scheme }}" ]; then export THEOS_PACKAGE_SCHEME="${{ matrix.scheme }}"; fi
           make clean || true
           make package FINALPACKAGE=1 -j"$(nproc)" -k 2>&1 | tee build.log
           APP=$(find .theos/_ -type d -name Wikie.app | head -n1)
@@ -151,13 +167,13 @@ jobs:
           VERSION=$(grep '^Version:' control | cut -d' ' -f2)
           rm -rf /tmp/ipa && mkdir -p /tmp/ipa/Payload packages
           cp -a "$APP" /tmp/ipa/Payload/
-          (cd /tmp/ipa && zip -qr9 "$GITHUB_WORKSPACE/packages/Wikie-$VERSION.ipa" Payload)
+          (cd /tmp/ipa && zip -qr9 "$GITHUB_WORKSPACE/packages/Wikie-$VERSION${{ matrix.suffix }}.ipa" Payload)
           ls -la packages/
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Wikie-iOS6-Packages
+          name: ${{ matrix.artifact }}
           path: |
             packages/*.ipa
             packages/*.deb
@@ -166,16 +182,13 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log
+          name: build-log-${{ matrix.name }}
           path: build.log
           if-no-files-found: ignore
 
-      - name: Publish GitHub Release (tags only)
+      - name: Publish to release (tags only)
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            packages/*.deb
-            packages/*.ipa
-          name: Wikie ${{ github.ref_name }}
-          generate_release_notes: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.ref_name }}" packages/*.ipa packages/*.deb --clobber

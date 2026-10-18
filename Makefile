@@ -50,5 +50,23 @@ Wikie_CODESIGN_FLAGS := -SResources/entitlements.plist
 
 include $(THEOS)/makefiles/application.mk
 
+WIKIE_STAGED_APP := $(THEOS_STAGING_DIR)/Applications/Wikie.app
+WIKIE_STAGED_BIN := $(WIKIE_STAGED_APP)/Wikie
+
+ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
+after-stage::
+	python3 "$(THEOS_PROJECT_DIR)/tools/modern_bundle.py" "$(WIKIE_STAGED_APP)"
+	ldid -S"$(THEOS_PROJECT_DIR)/Resources/entitlements.plist" "$(WIKIE_STAGED_BIN)"
+before-package::
+	sed -i -e 's/^Depends: .*/Depends: firmware (>= 15.0)/' "$(THEOS_STAGING_DIR)/DEBIAN/control"
+	printf '%s\n' '#!/bin/sh' '[ "$$1" = configure ] || exit 0' \
+		'command -v uicache >/dev/null 2>&1 && { uicache -p /var/jb/Applications/Wikie.app >/dev/null 2>&1 || uicache -a >/dev/null 2>&1; }' \
+		'exit 0' > "$(THEOS_STAGING_DIR)/DEBIAN/postinst"
+	printf '%s\n' '#!/bin/sh' '[ "$$1" = remove ] || exit 0' \
+		'command -v uicache >/dev/null 2>&1 && uicache -a >/dev/null 2>&1' \
+		'exit 0' > "$(THEOS_STAGING_DIR)/DEBIAN/postrm"
+	chmod 0755 "$(THEOS_STAGING_DIR)/DEBIAN/postinst" "$(THEOS_STAGING_DIR)/DEBIAN/postrm"
+endif
+
 after-all::
 	@echo "Wikie build complete."
