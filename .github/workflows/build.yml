@@ -40,7 +40,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential fakeroot rsync curl perl zip unzip git libplist-utils libxml2 xz-utils python3
+            build-essential fakeroot rsync curl perl zip unzip git libplist-utils libxml2 xz-utils python3 llvm
 
       - name: Restore Theos cache
         id: theos-cache

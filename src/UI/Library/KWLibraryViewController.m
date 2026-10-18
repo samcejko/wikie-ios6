@@ -6,8 +6,6 @@
 #import "KWCommon.h"
 
 @interface KWLibraryViewController () {
-    UITableView *_tableView;
-    UIRefreshControl *_refreshControl;
     UILabel *_emptyStateLabel;
 }
 @end
@@ -19,7 +17,6 @@
     [super viewDidLoad];
 
     self.title = L(@"Library");
-    self.view.backgroundColor = [UIColor whiteColor];
 
     // Navigation bar items
     UIBarButtonItem *wifiItem = [[UIBarButtonItem alloc] initWithTitle:L(@"WiFiUpload")
@@ -33,20 +30,15 @@
                                                                                   action:@selector(catalogTapped:)];
     self.navigationItem.rightBarButtonItem = downloadItem;
 
-    _tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
-    _tableView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    _tableView.dataSource = self;
-    _tableView.delegate = self;
-    _tableView.rowHeight = 64;
-    [self.view addSubview:_tableView];
+    self.tableView.rowHeight = 64;
 
-    // iOS 6 UIRefreshControl!
-    _refreshControl = [[UIRefreshControl alloc] init];
-    [_refreshControl addTarget:self action:@selector(pullToRefresh:) forControlEvents:UIControlEventValueChanged];
-    [_tableView addSubview:_refreshControl];
+    // iOS 6 native UIRefreshControl on UITableViewController
+    UIRefreshControl *rc = [[UIRefreshControl alloc] init];
+    [rc addTarget:self action:@selector(pullToRefresh:) forControlEvents:UIControlEventValueChanged];
+    self.refreshControl = rc;
 
     // Empty state label
-    _emptyStateLabel = [[UILabel alloc] initWithFrame:CGRectInset(self.view.bounds, 30, 80)];
+    _emptyStateLabel = [[UILabel alloc] initWithFrame:self.tableView.bounds];
     _emptyStateLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     _emptyStateLabel.numberOfLines = 0;
     _emptyStateLabel.textAlignment = NSTextAlignmentCenter;
@@ -54,7 +46,6 @@
     _emptyStateLabel.font = [UIFont systemFontOfSize:15];
     _emptyStateLabel.text = [NSString stringWithFormat:@"%@\n\n%@", L(@"NoArchivesTitle"), L(@"NoArchivesMessage")];
     _emptyStateLabel.hidden = YES;
-    [self.view addSubview:_emptyStateLabel];
 
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(libraryChanged:)
@@ -73,7 +64,7 @@
 {
     [super viewWillAppear:animated];
     self.navigationController.toolbarHidden = YES;
-    [_tableView reloadData];
+    [self.tableView reloadData];
     [self updateEmptyState];
 }
 
@@ -81,13 +72,13 @@
 {
     BOOL empty = ([KWArchiveManager sharedManager].archives.count == 0);
     _emptyStateLabel.hidden = !empty;
-    _tableView.backgroundView = empty ? _emptyStateLabel : nil;
+    self.tableView.backgroundView = empty ? _emptyStateLabel : nil;
 }
 
 - (void)libraryChanged:(NSNotification *)note
 {
-    [_refreshControl endRefreshing];
-    [_tableView reloadData];
+    [self.refreshControl endRefreshing];
+    [self.tableView reloadData];
     [self updateEmptyState];
 }
 
@@ -170,7 +161,7 @@
 
     ZIMFile *archive = [KWArchiveManager sharedManager].archives[indexPath.row];
     [KWArchiveManager sharedManager].activeArchive = archive;
-    [_tableView reloadData];
+    [self.tableView reloadData];
 
     KWReaderViewController *readerVC = [[KWReaderViewController alloc] init];
     readerVC.currentArchive = archive;

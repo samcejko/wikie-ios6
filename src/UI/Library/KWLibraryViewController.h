@@ -1,5 +1,5 @@
 #import <UIKit/UIKit.h>
 
-@interface KWLibraryViewController : UIViewController <UITableViewDataSource, UITableViewDelegate, UIAlertViewDelegate>
+@interface KWLibraryViewController : UITableViewController <UIAlertViewDelegate>
 
 @end
