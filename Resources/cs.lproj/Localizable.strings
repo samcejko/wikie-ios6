@@ -25,3 +25,7 @@
 "WiFiServerRunning" = "Otevřete tuto adresu v prohlížeči na počítači:";
 "WiFiServerHint" = "Ujistěte se, že zařízení i počítač jsou na stejné Wi-Fi síti.";
 "StopServer" = "Zastavit";
+"Back" = "Zpět";
+"Forward" = "Vpřed";
+"LargerText" = "Větší písmo";
+"SmallerText" = "Menší písmo";

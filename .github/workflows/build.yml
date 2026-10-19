@@ -170,7 +170,17 @@ jobs:
           (cd /tmp/ipa && zip -qr9 "$GITHUB_WORKSPACE/packages/Wikie-$VERSION${{ matrix.suffix }}.ipa" Payload)
           ls -la packages/
 
+      - name: Build offline ZIM regression test
+        run: |
+          set -e
+          export PATH="$THEOS/toolchain/linux/iphone/bin:$THEOS/bin:$PATH"
+          if [ -n "${{ matrix.scheme }}" ]; then ARCH=arm64; SDK=16.5; MIN=14.0; else ARCH=armv7; SDK=9.3; MIN=6.0; fi
+          clang -target $ARCH-apple-ios$MIN -isysroot "$THEOS/sdks/iPhoneOS$SDK.sdk" -fobjc-arc -fblocks -Wno-deprecated-declarations -Isrc -Isrc/ZIM -Isrc/Protocol -Isrc/Model tools/zim-selftest.m src/ZIM/*.m src/Protocol/KWZIMURLProtocol.m src/KWCommon.m vendor/zstd/zstddeclib.c -framework Foundation -framework UIKit -framework CoreFoundation -lz -o packages/zim-selftest${{ matrix.suffix }}
+          if [ "$ARCH" = armv7 ]; then llvm-install-name-tool -change /System/Library/Frameworks/CFNetwork.framework/CFNetwork /System/Library/Frameworks/Foundation.framework/Foundation packages/zim-selftest; fi
+          ldid -SResources/entitlements.plist packages/zim-selftest${{ matrix.suffix }}
+
       - name: Upload Artifacts
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
@@ -180,6 +190,7 @@ jobs:
 
       - name: Upload Build Log
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: build-log-${{ matrix.name }}
@@ -195,7 +206,7 @@ jobs:
           gh release view ci-build >/dev/null 2>&1 || \
             gh release create ci-build --prerelease --title "Latest CI build" \
               --notes "Automatic build of the latest commit (armv7 for iOS 6, arm64 for iOS 14-17). Not a stable release." || true
-          gh release upload ci-build packages/*.ipa packages/*.deb --clobber
+          gh release upload ci-build packages/*.ipa packages/*.deb packages/zim-selftest* --clobber
           echo "uploaded to the ci-build prerelease:"; ls -la packages/*.ipa packages/*.deb
 
       - name: Publish to release (tags only)
@@ -207,4 +218,4 @@ jobs:
           gh release view "${{ github.ref_name }}" >/dev/null 2>&1 || \
             gh release create "${{ github.ref_name }}" --title "Wikie ${{ github.ref_name }}" \
               --notes "Release ${{ github.ref_name }}" || true
-          gh release upload "${{ github.ref_name }}" packages/*.ipa packages/*.deb --clobber
+          gh release upload "${{ github.ref_name }}" packages/*.ipa packages/*.deb packages/zim-selftest* --clobber

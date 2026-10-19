@@ -15,6 +15,8 @@
     NSMutableDictionary *_clusterCache; // clusterIndex -> ZIMCluster
     NSMutableArray *_clusterLRU;        // clusterIndex in access order
     dispatch_queue_t _ioQueue;
+    NSData *_titleIndex;
+    uint32_t _titleCount;
 }
 @end
 
@@ -68,6 +70,12 @@
     }
 
     [self parseMimeTypes];
+    // Modern archives store the article-only title index as a listing blob.
+    ZIMEntry *listing = [self binarySearchURL:@"X/listing/titleOrdered/v1"];
+    if (listing) _titleIndex = [self dataForEntry:listing error:nil];
+    if (_titleIndex.length % 4 != 0) _titleIndex = nil;
+    _titleCount = _titleIndex ? (uint32_t)(_titleIndex.length / 4) :
+        (_header.titlePtrPos ? _articleCount : 0);
     [self parseMetadata];
 
     KWLog(@"Opened ZIM archive '%@': ver %u.%u, %u articles, %u clusters, size %@",
@@ -166,19 +174,20 @@
 // In openZIM spec: titlePtrPos is an array of 32-bit indices pointing into urlPtrPos
 - (ZIMEntry *)entryAtTitleIndex:(uint32_t)index
 {
-    if (index >= _articleCount) return nil;
-
-    if (_header.titlePtrPos == 0) {
-        // Obsolete in some v6 archives: fallback to URL index directly
-        return [self entryAtURLIndex:index];
+    if (index >= _titleCount) return nil;
+    if (_titleIndex) {
+        uint32_t urlIdx;
+        memcpy(&urlIdx, (const uint8_t *)_titleIndex.bytes + (size_t)index * 4, 4);
+        return [self entryAtURLIndex:urlIdx];
     }
 
-    __block uint32_t urlIdx = 0;
+    __block uint32_t urlIdx = ZIM_INVALID_INDEX;
     dispatch_sync(_ioQueue, ^{
         if (!_fileHandle) return;
         off_t offset = (off_t)(_header.titlePtrPos + (uint64_t)index * 4);
         if (fseeko(_fileHandle, offset, SEEK_SET) == 0) {
-            fread(&urlIdx, 1, sizeof(uint32_t), _fileHandle);
+            if (fread(&urlIdx, 1, sizeof(uint32_t), _fileHandle) != sizeof(uint32_t))
+                urlIdx = ZIM_INVALID_INDEX;
         }
     });
 
@@ -315,11 +324,11 @@
         if (!midEntry) break;
 
         NSString *midPath = [midEntry fullPath];
-        NSComparisonResult cmp = [targetPath compare:midPath options:NSLiteralSearch];
+        int cmp = strcmp(targetPath.UTF8String, midPath.UTF8String);
 
         if (cmp == NSOrderedSame) {
             return midEntry.isRedirect ? [self resolveRedirect:midEntry hopCount:0] : midEntry;
-        } else if (cmp == NSOrderedAscending) {
+        } else if (cmp < 0) {
             high = mid - 1;
         } else {
             low = mid + 1;
@@ -333,15 +342,8 @@
     if (!path || path.length == 0 || _articleCount == 0) return nil;
 
     NSString *cleanPath = path;
-    // Strip query parameters and anchors if any
-    NSRange hashRange = [cleanPath rangeOfString:@"#"];
-    if (hashRange.location != NSNotFound) {
-        cleanPath = [cleanPath substringToIndex:hashRange.location];
-    }
-    NSRange qRange = [cleanPath rangeOfString:@"?"];
-    if (qRange.location != NSNotFound) {
-        cleanPath = [cleanPath substringToIndex:qRange.location];
-    }
+    // NSURL.path already excludes the query/fragment. Literal # and ? belong
+    // to article names and must survive a lookup.
 
     while ([cleanPath hasPrefix:@"/"]) {
         cleanPath = [cleanPath substringFromIndex:1];
@@ -365,83 +367,75 @@
         if (entry) return entry;
     }
 
-    // 4. In v5: if no namespace prefix, try prepending "A/"
-    if (_majorVersion == 5 && [cleanPath rangeOfString:@"/"].location == NSNotFound) {
-        NSString *prefixed = [NSString stringWithFormat:@"A/%@", cleanPath];
-        entry = [self binarySearchURL:prefixed];
-        if (entry) return entry;
+    // Both version 5 and 6 keep namespaces in the directory. Modern content
+    // lives in C/, including paths containing subdirectories.
+    for (NSString *ns in @[@"C/", @"A/"]) {
+        for (NSString *candidate in @[cleanPath, decoded ?: cleanPath]) {
+            entry = [self binarySearchURL:[ns stringByAppendingString:candidate]];
+            if (entry) return entry;
+        }
     }
 
     return nil;
 }
 
+// The on-disk index is ordered by namespace and UTF-8 bytes, not by
+// Foundation's case-insensitive/linguistic collation.
+- (uint32_t)titleLowerBound:(NSString *)title namespace:(char)ns
+{
+    uint32_t low = 0, high = _titleCount;
+    while (low < high) {
+        uint32_t mid = low + (high - low) / 2;
+        ZIMEntry *entry = [self entryAtTitleIndex:mid];
+        if (!entry) return _titleCount;
+        int cmp = (unsigned char)entry.namespaceChar - (unsigned char)ns;
+        if (!cmp) cmp = strcmp(entry.title.UTF8String ?: "", title.UTF8String);
+        if (cmp < 0) low = mid + 1;
+        else high = mid;
+    }
+    return low;
+}
+
 - (ZIMEntry *)entryForTitle:(NSString *)title
 {
-    if (!title || title.length == 0 || _articleCount == 0) return nil;
-
-    int64_t low = 0;
-    int64_t high = (int64_t)_articleCount - 1;
-
-    while (low <= high) {
-        int64_t mid = low + (high - low) / 2;
-        ZIMEntry *midEntry = [self entryAtTitleIndex:(uint32_t)mid];
-        if (!midEntry) break;
-
-        NSComparisonResult cmp = [title compare:midEntry.title options:NSCaseInsensitiveSearch];
-
-        if (cmp == NSOrderedSame) {
-            return midEntry.isRedirect ? [self resolveRedirect:midEntry hopCount:0] : midEntry;
-        } else if (cmp == NSOrderedAscending) {
-            high = mid - 1;
-        } else {
-            low = mid + 1;
-        }
+    if (!title.length) return nil;
+    const char namespaces[] = {'C', 'A', 0};
+    for (NSUInteger n = 0; n < sizeof(namespaces); n++) {
+        ZIMEntry *entry = [self entryAtTitleIndex:[self titleLowerBound:title namespace:namespaces[n]]];
+        if (entry.namespaceChar == namespaces[n] && [entry.title isEqualToString:title])
+            return entry.isRedirect ? [self resolveRedirect:entry hopCount:0] : entry;
     }
-
     return nil;
 }
 
 - (NSArray *)searchEntriesWithPrefix:(NSString *)prefix maxResults:(NSUInteger)maxResults
 {
-    if (!prefix || prefix.length == 0 || _articleCount == 0 || maxResults == 0) {
-        return @[];
-    }
-
-    NSMutableArray *results = [NSMutableArray arrayWithCapacity:maxResults];
-    NSString *cleanPrefix = [prefix stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-
-    int64_t low = 0;
-    int64_t high = (int64_t)_articleCount - 1;
-    int64_t startIndex = -1;
-
-    while (low <= high) {
-        int64_t mid = low + (high - low) / 2;
-        ZIMEntry *entry = [self entryAtTitleIndex:(uint32_t)mid];
-        if (!entry) break;
-
-        if ([entry.title compare:cleanPrefix options:NSCaseInsensitiveSearch] != NSOrderedAscending) {
-            startIndex = mid;
-            high = mid - 1;
-        } else {
-            low = mid + 1;
-        }
-    }
-
-    if (startIndex < 0 || startIndex >= _articleCount) return results;
-
-    for (uint32_t i = (uint32_t)startIndex; i < _articleCount && results.count < maxResults; i++) {
-        ZIMEntry *entry = [self entryAtTitleIndex:i];
-        if (!entry) break;
-
-        if ([entry.title rangeOfString:cleanPrefix options:NSCaseInsensitiveSearch | NSAnchoredSearch].location != NSNotFound) {
-            if (entry.namespaceChar == 'A' || entry.namespaceChar == 0 || entry.namespaceChar == 'C') {
-                [results addObject:entry];
+    NSString *query = [prefix stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (!query.length || !_titleCount || !maxResults) return @[];
+    NSMutableArray *results = [NSMutableArray array];
+    NSMutableSet *seen = [NSMutableSet set];
+    // Wikipedia capitalizes the first letter; also search the spelling typed
+    // by the reader and lowercase titles, without changing index ordering.
+    NSRange first = [query rangeOfComposedCharacterSequenceAtIndex:0];
+    NSString *capitalized = [[[query substringWithRange:first] uppercaseString]
+        stringByAppendingString:[query substringFromIndex:NSMaxRange(first)]];
+    NSArray *variants = @[query, capitalized, query.lowercaseString];
+    const char namespaces[] = {'C', 'A', 0};
+    for (NSString *variant in variants) {
+        for (NSUInteger n = 0; n < sizeof(namespaces); n++) {
+            uint32_t start = [self titleLowerBound:variant namespace:namespaces[n]];
+            for (uint32_t i = start; i < _titleCount && results.count < maxResults; i++) {
+                ZIMEntry *entry = [self entryAtTitleIndex:i];
+                if (!entry || entry.namespaceChar != namespaces[n] || ![entry.title hasPrefix:variant]) break;
+                NSNumber *key = @(entry.entryIndex);
+                if (![seen containsObject:key]) {
+                    [seen addObject:key];
+                    [results addObject:entry];
+                }
             }
-        } else {
-            break;
         }
+        if (results.count >= maxResults) break;
     }
-
     return results;
 }
 

@@ -17,6 +17,24 @@
 
 @implementation KWReaderViewController
 
+- (UIImage *)navigationArrowForward:(BOOL)forward
+{
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(22, 22), NO, 0);
+    UIBezierPath *path = [UIBezierPath bezierPath];
+    CGFloat edge = forward ? 7 : 15, tip = forward ? 15 : 7;
+    [path moveToPoint:CGPointMake(edge, 4)];
+    [path addLineToPoint:CGPointMake(tip, 11)];
+    [path addLineToPoint:CGPointMake(edge, 18)];
+    path.lineWidth = 2;
+    path.lineCapStyle = kCGLineCapRound;
+    path.lineJoinStyle = kCGLineJoinRound;
+    [[UIColor blackColor] setStroke];
+    [path stroke];
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return image;
+}
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
@@ -41,10 +59,12 @@
     self.navigationItem.rightBarButtonItem = searchItem;
 
     // Bottom Toolbar items
-    _backItem = [[UIBarButtonItem alloc] initWithTitle:@"◀" style:UIBarButtonItemStylePlain target:self action:@selector(goBackTapped:)];
+    _backItem = [[UIBarButtonItem alloc] initWithImage:[self navigationArrowForward:NO] style:UIBarButtonItemStylePlain target:self action:@selector(goBackTapped:)];
+    _backItem.accessibilityLabel = L(@"Back");
     _backItem.enabled = NO;
 
-    _forwardItem = [[UIBarButtonItem alloc] initWithTitle:@"▶" style:UIBarButtonItemStylePlain target:self action:@selector(goForwardTapped:)];
+    _forwardItem = [[UIBarButtonItem alloc] initWithImage:[self navigationArrowForward:YES] style:UIBarButtonItemStylePlain target:self action:@selector(goForwardTapped:)];
+    _forwardItem.accessibilityLabel = L(@"Forward");
     _forwardItem.enabled = NO;
 
     UIBarButtonItem *flex = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
@@ -56,7 +76,9 @@
     self.navigationController.toolbarHidden = NO;
 
     // Load initial entry if active and not already loaded
-    if (!_currentEntry) {
+    if (_currentEntry && _currentArchive) {
+        [self loadEntry:_currentEntry archive:_currentArchive];
+    } else {
         if (!_currentArchive) {
             _currentArchive = [KWArchiveManager sharedManager].activeArchive;
         }
@@ -82,6 +104,9 @@
     _currentArchive = archive;
 
     if (!entry || !archive) return;
+    // The library assigns the entry before pushing this controller. Defer
+    // the request until viewDidLoad has created the web view.
+    if (![self isViewLoaded]) return;
 
     NSURL *url = [KWZIMURLProtocol URLForArchiveId:archive.archiveId path:[entry fullPath]];
     [self loadURL:url];
@@ -149,7 +174,7 @@
                                                        delegate:self
                                               cancelButtonTitle:L(@"Cancel")
                                          destructiveButtonTitle:nil
-                                              otherButtonTitles:L(@"Light"), L(@"Sepia"), L(@"Dark"), @"Font +", @"Font -", nil];
+                                              otherButtonTitles:L(@"Light"), L(@"Sepia"), L(@"Dark"), L(@"LargerText"), L(@"SmallerText"), nil];
     [sheet showFromToolbar:self.navigationController.toolbar];
 }
 

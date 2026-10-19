@@ -25,3 +25,7 @@
 "WiFiServerRunning" = "Open this address in your computer's browser:";
 "WiFiServerHint" = "Make sure your device and computer are on the same Wi-Fi network.";
 "StopServer" = "Stop";
+"Back" = "Back";
+"Forward" = "Forward";
+"LargerText" = "Larger text";
+"SmallerText" = "Smaller text";

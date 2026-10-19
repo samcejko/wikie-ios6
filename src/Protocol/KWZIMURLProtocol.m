@@ -17,7 +17,15 @@ static NSString * const KWZIMProtocolHandledKey = @"KWZIMProtocolHandledKey";
     while ([cleanPath hasPrefix:@"/"]) {
         cleanPath = [cleanPath substringFromIndex:1];
     }
-    NSString *urlString = [NSString stringWithFormat:@"zim://%@/%@", archiveId ? archiveId : @"current", cleanPath];
+    // Entry names are raw UTF-8 paths, not URLs. Escape reserved characters too:
+    // a literal # or ? in a title must not become a fragment or query.
+    NSString *escapedPath = CFBridgingRelease(CFURLCreateStringByAddingPercentEscapes(
+        kCFAllocatorDefault, (__bridge CFStringRef)(cleanPath ?: @""), CFSTR("/"),
+        CFSTR("?#%"), kCFStringEncodingUTF8));
+    NSString *escapedId = CFBridgingRelease(CFURLCreateStringByAddingPercentEscapes(
+        kCFAllocatorDefault, (__bridge CFStringRef)(archiveId ?: @"current"), NULL,
+        CFSTR("/?#%:@"), kCFStringEncodingUTF8));
+    NSString *urlString = [NSString stringWithFormat:@"zim://%@/%@", escapedId, escapedPath];
     return [NSURL URLWithString:urlString];
 }
 
@@ -46,7 +54,7 @@ static NSString * const KWZIMProtocolHandledKey = @"KWZIMProtocolHandledKey";
     [NSURLProtocol setProperty:@YES forKey:KWZIMProtocolHandledKey inRequest:newRequest];
 
     NSURL *url = self.request.URL;
-    NSString *host = url.host;
+    NSString *host = [url.host stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
     NSString *path = url.path;
 
     while ([path hasPrefix:@"/"]) {
