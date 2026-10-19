@@ -10,10 +10,13 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+    signal(SIGPIPE, SIG_IGN);
+
     // Register custom zim:// protocol for UIWebView
     [KWZIMURLProtocol registerProtocol];
 
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+    self.window.backgroundColor = [UIColor whiteColor];
 
     KWLibraryViewController *libraryVC = [[KWLibraryViewController alloc] init];
     self.navigationController = [[UINavigationController alloc] initWithRootViewController:libraryVC];
@@ -25,14 +28,8 @@
     self.window.rootViewController = self.navigationController;
     [self.window makeKeyAndVisible];
 
-    // If archives already exist, auto-push reader with active archive
-    ZIMFile *active = [KWArchiveManager sharedManager].activeArchive;
-    if (active) {
-        KWReaderViewController *readerVC = [[KWReaderViewController alloc] init];
-        readerVC.currentArchive = active;
-        [readerVC loadEntry:[active mainPageEntry] archive:active];
-        [self.navigationController pushViewController:readerVC animated:NO];
-    }
+    // Asynchronously scan for archives in background so launch is instant
+    [[KWArchiveManager sharedManager] rescanArchives];
 
     // Handle initial launch URL if any
     NSURL *launchURL = launchOptions[UIApplicationLaunchOptionsURLKey];

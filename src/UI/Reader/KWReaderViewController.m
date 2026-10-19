@@ -55,14 +55,16 @@
     self.toolbarItems = @[_backItem, flex, _forwardItem, flex, _bookmarkItem, flex, _themeItem];
     self.navigationController.toolbarHidden = NO;
 
-    // Load initial entry if active
-    if (!_currentArchive) {
-        _currentArchive = [KWArchiveManager sharedManager].activeArchive;
-    }
-    if (_currentArchive) {
-        ZIMEntry *mainPage = [_currentArchive mainPageEntry];
-        if (mainPage) {
-            [self loadEntry:mainPage archive:_currentArchive];
+    // Load initial entry if active and not already loaded
+    if (!_currentEntry) {
+        if (!_currentArchive) {
+            _currentArchive = [KWArchiveManager sharedManager].activeArchive;
+        }
+        if (_currentArchive) {
+            ZIMEntry *mainPage = [_currentArchive mainPageEntry];
+            if (mainPage) {
+                [self loadEntry:mainPage archive:_currentArchive];
+            }
         }
     }
 }
