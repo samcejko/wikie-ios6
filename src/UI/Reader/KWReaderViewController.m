@@ -32,7 +32,9 @@
     [path stroke];
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-    if (@available(iOS 7.0, *)) {
+    NSString *systemVersion = [UIDevice currentDevice].systemVersion;
+    BOOL modernSystem = [systemVersion compare:@"7.0" options:NSNumericSearch] != NSOrderedAscending;
+    if (modernSystem) {
         image = [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     }
     return image;

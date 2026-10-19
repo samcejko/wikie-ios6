@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5
+
+- Kept iOS 6 compatibility while applying classic appearance settings on newer iOS versions.
+
 ## 1.0.4
 
 - Fixed compilation of Wi-Fi upload request parsing for both supported architectures.

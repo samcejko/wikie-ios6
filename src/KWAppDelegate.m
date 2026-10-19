@@ -34,7 +34,7 @@
     UIColor *barTint = modernSystem ? [UIColor whiteColor] : [UIColor colorWithRed:0.25 green:0.35 blue:0.48 alpha:1.0];
     self.navigationController.navigationBar.tintColor = barTint;
     self.navigationController.toolbar.tintColor = barTint;
-    if (@available(iOS 7.0, *)) {
+    if (modernSystem) {
         self.navigationController.navigationBar.translucent = NO;
         self.navigationController.toolbar.translucent = NO;
     }
