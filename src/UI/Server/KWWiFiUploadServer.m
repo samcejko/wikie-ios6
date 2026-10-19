@@ -211,8 +211,10 @@
     for (NSUInteger i = 1; i < lines.count; i++) {
         NSString *line = lines[i]; NSRange colon = [line rangeOfString:@":"];
         if (colon.location == NSNotFound) continue;
-        fields[[[line substringToIndex:colon.location] lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]] =
-            [[line substringFromIndex:colon.location + 1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        NSString *fieldName = [[line substringToIndex:colon.location] lowercaseString];
+        fieldName = [fieldName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        NSString *fieldValue = [[line substringFromIndex:colon.location + 1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        fields[fieldName] = fieldValue;
     }
     NSString *lengthText = fields[@"content-length"];
     NSCharacterSet *nonDigits = [[NSCharacterSet decimalDigitCharacterSet] invertedSet];

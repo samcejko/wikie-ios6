@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4
+
+- Fixed compilation of Wi-Fi upload request parsing for both supported architectures.
+
 ## 1.0.3
 
 - Restored the glossy iOS 6 navigation, toolbar, buttons, and search bar on newer iOS versions.
