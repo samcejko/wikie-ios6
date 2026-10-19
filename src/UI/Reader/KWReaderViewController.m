@@ -19,6 +19,8 @@
 
 - (UIImage *)navigationArrowForward:(BOOL)forward
 {
+    NSString *systemVersion = [UIDevice currentDevice].systemVersion;
+    BOOL modernSystem = [systemVersion compare:@"7.0" options:NSNumericSearch] != NSOrderedAscending;
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(22, 22), NO, 0);
     UIBezierPath *path = [UIBezierPath bezierPath];
     CGFloat edge = forward ? 7 : 15, tip = forward ? 15 : 7;
@@ -28,15 +30,10 @@
     path.lineWidth = 2;
     path.lineCapStyle = kCGLineCapRound;
     path.lineJoinStyle = kCGLineJoinRound;
-    [[UIColor blackColor] setStroke];
+    [(modernSystem ? [UIColor whiteColor] : [UIColor blackColor]) setStroke];
     [path stroke];
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-    NSString *systemVersion = [UIDevice currentDevice].systemVersion;
-    BOOL modernSystem = [systemVersion compare:@"7.0" options:NSNumericSearch] != NSOrderedAscending;
-    if (modernSystem) {
-        image = [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    }
     return image;
 }
 

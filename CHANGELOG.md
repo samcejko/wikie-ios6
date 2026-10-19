@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.6
+
+- Draws classic toolbar arrows without APIs that are unavailable on iOS 6.
+
 ## 1.0.5
 
 - Kept iOS 6 compatibility while applying classic appearance settings on newer iOS versions.
