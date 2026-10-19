@@ -175,7 +175,7 @@ jobs:
           set -e
           export PATH="$THEOS/toolchain/linux/iphone/bin:$THEOS/bin:$PATH"
           if [ -n "${{ matrix.scheme }}" ]; then ARCH=arm64; SDK=16.5; MIN=14.0; else ARCH=armv7; SDK=9.3; MIN=6.0; fi
-          clang -target $ARCH-apple-ios$MIN -isysroot "$THEOS/sdks/iPhoneOS$SDK.sdk" -fobjc-arc -fblocks -Wno-deprecated-declarations -Isrc -Isrc/ZIM -Isrc/Protocol -Isrc/Model tools/zim-selftest.m src/ZIM/*.m src/Protocol/KWZIMURLProtocol.m src/KWCommon.m vendor/zstd/zstddeclib.c -framework Foundation -framework UIKit -framework CoreFoundation -lz -o packages/zim-selftest${{ matrix.suffix }}
+          clang -target $ARCH-apple-ios$MIN -isysroot "$THEOS/sdks/iPhoneOS$SDK.sdk" -fobjc-arc -fno-objc-link-runtime -fblocks -Wno-deprecated-declarations -Isrc -Isrc/ZIM -Isrc/Protocol -Isrc/Model tools/zim-selftest.m src/ZIM/*.m src/Protocol/KWZIMURLProtocol.m src/KWCommon.m vendor/zstd/zstddeclib.c -framework Foundation -framework UIKit -framework CoreFoundation -lobjc -lz -o packages/zim-selftest${{ matrix.suffix }}
           if [ "$ARCH" = armv7 ]; then llvm-install-name-tool -change /System/Library/Frameworks/CFNetwork.framework/CFNetwork /System/Library/Frameworks/Foundation.framework/Foundation packages/zim-selftest; fi
           ldid -SResources/entitlements.plist packages/zim-selftest${{ matrix.suffix }}
 
