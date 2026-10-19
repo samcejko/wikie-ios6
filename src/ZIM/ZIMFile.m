@@ -91,10 +91,15 @@
 
 - (void)close
 {
-    if (_fileHandle) {
-        fclose(_fileHandle);
-        _fileHandle = NULL;
-    }
+    if (!_ioQueue) return;
+    // Wait for readers before closing their FILE; also used during deallocation.
+    __unsafe_unretained ZIMFile *file = self;
+    dispatch_sync(_ioQueue, ^{
+        if (file->_fileHandle) {
+            fclose(file->_fileHandle);
+            file->_fileHandle = NULL;
+        }
+    });
 }
 
 #pragma mark - MIME & Metadata Parsing

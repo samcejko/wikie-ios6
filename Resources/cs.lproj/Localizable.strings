@@ -29,3 +29,18 @@
 "Forward" = "Vpřed";
 "LargerText" = "Větší písmo";
 "SmallerText" = "Menší písmo";
+
+"ImportFailed" = "Import se nezdařil";
+
+"UploadInvalidRequest" = "Neplatný požadavek na přenos.";
+
+"UploadComplete" = "Archiv byl uložen.";
+
+"UploadFailed" = "Přenos se nezdařil. Zkuste jej znovu.";
+
+"DownloadInvalidURL" = "Zadejte platnou adresu HTTP nebo HTTPS.";
+"DownloadBusy" = "Již probíhá stahování.";
+"FeaturedArchives" = "Doporučené archivy pro mobilní zařízení";
+"DownloadingFile" = "Stahování %@…";
+"DownloadComplete" = "Archiv ZIM byl stažen.";
+"DownloadSaveFailed" = "Stažený archiv se nepodařilo uložit. Zkontrolujte volné místo.";

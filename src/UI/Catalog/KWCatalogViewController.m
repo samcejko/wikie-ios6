@@ -36,26 +36,26 @@
         @{
             @"name": @"Wikipedia (Simple English)",
             @"lang": @"en",
-            @"size": @"~250 MB",
-            @"url": @"http://download.kiwix.org/zim/wikipedia/wikipedia_en_simple_all_nopic_2024-01.zim"
+            @"size": @"~506 MB",
+            @"url": @"http://mirror.download.kiwix.org/zim/wikipedia/wikipedia_en-simple_all_mini_2026-09.zim"
         },
         @{
             @"name": @"Wikipedie (Čeština mini)",
             @"lang": @"cs",
-            @"size": @"~350 MB",
-            @"url": @"http://download.kiwix.org/zim/wikipedia/wikipedia_cs_all_mini_2024-01.zim"
+            @"size": @"~943 MB",
+            @"url": @"http://mirror.download.kiwix.org/zim/wikipedia/wikipedia_cs_all_mini_2026-09.zim"
         },
         @{
             @"name": @"Wikivoyage (Travel Guide)",
             @"lang": @"en",
-            @"size": @"~150 MB",
-            @"url": @"http://download.kiwix.org/zim/wikivoyage/wikivoyage_en_all_nopic_2024-01.zim"
+            @"size": @"~260 MB",
+            @"url": @"http://mirror.download.kiwix.org/zim/wikivoyage/wikivoyage_en_all_nopic_2026-09.zim"
         },
         @{
             @"name": @"Wiktionary (Slovník)",
             @"lang": @"cs/en",
-            @"size": @"~80 MB",
-            @"url": @"http://download.kiwix.org/zim/wiktionary/wiktionary_cs_all_nopic_2024-01.zim"
+            @"size": @"~162 MB",
+            @"url": @"http://mirror.download.kiwix.org/zim/wiktionary/wiktionary_cs_all_nopic_2026-10.zim"
         }
     ];
 
@@ -65,7 +65,7 @@
     _progressHeader.hidden = YES;
 
     _statusLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, 8, self.view.bounds.size.width - 32, 20)];
-    _statusLabel.font = [UIFont systemFontOfSize:14];
+    _statusLabel.font = [UIFont fontWithName:@"HelveticaNeue" size:14];
     _statusLabel.text = L(@"Downloading");
     _statusLabel.backgroundColor = [UIColor clearColor];
     [_progressHeader addSubview:_statusLabel];
@@ -76,6 +76,7 @@
 
     _tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStyleGrouped];
     _tableView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    _tableView.backgroundColor = [UIColor colorWithWhite:0.94 alpha:1.0];
     _tableView.dataSource = self;
     _tableView.delegate = self;
     _tableView.tableHeaderView = _progressHeader;
@@ -99,16 +100,22 @@
     if (buttonIndex == 1) {
         NSString *urlText = [alertView textFieldAtIndex:0].text;
         if (urlText.length > 0) {
-            [self startDownloadURL:[NSURL URLWithString:urlText] fileName:[urlText lastPathComponent]];
+            [self startDownloadURL:[NSURL URLWithString:urlText] fileName:[[NSURL URLWithString:urlText] lastPathComponent]];
         }
     }
 }
 
 - (void)startDownloadURL:(NSURL *)url fileName:(NSString *)fileName
 {
+    if (!url.host.length || ![@[@"http", @"https"] containsObject:url.scheme.lowercaseString]) {
+        [[[UIAlertView alloc] initWithTitle:L(@"Error") message:L(@"DownloadInvalidURL") delegate:nil cancelButtonTitle:L(@"OK") otherButtonTitles:nil] show];
+        return;
+    }
+    fileName = fileName.lastPathComponent;
+    if (!fileName.length) fileName = @"archive.zim";
     if (_activeConnection) {
         UIAlertView *busyAlert = [[UIAlertView alloc] initWithTitle:L(@"Error")
-                                                            message:@"A download is already in progress"
+                                                            message:L(@"DownloadBusy")
                                                            delegate:nil
                                                   cancelButtonTitle:L(@"OK")
                                                   otherButtonTitles:nil];
@@ -124,16 +131,23 @@
     }
 
     _downloadDestPath = [docsDir stringByAppendingPathComponent:fileName];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:_downloadDestPath]) {
+        _downloadDestPath = [docsDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-%@.zim", fileName.stringByDeletingPathExtension, [[NSUUID UUID] UUIDString]]];
+    }
     _downloadTempPath = [_downloadDestPath stringByAppendingPathExtension:@"tmp"];
 
     [[NSFileManager defaultManager] removeItemAtPath:_downloadTempPath error:nil];
     [[NSFileManager defaultManager] createFileAtPath:_downloadTempPath contents:nil attributes:nil];
     _fileHandle = [NSFileHandle fileHandleForWritingAtPath:_downloadTempPath];
 
+    if (!_fileHandle) {
+        [[[UIAlertView alloc] initWithTitle:L(@"Error") message:L(@"DownloadSaveFailed") delegate:nil cancelButtonTitle:L(@"OK") otherButtonTitles:nil] show];
+        return;
+    }
     _receivedBytes = 0;
     _totalBytes = 0;
     _progressView.progress = 0.0;
-    _statusLabel.text = [NSString stringWithFormat:@"Downloading %@...", fileName];
+    _statusLabel.text = [NSString stringWithFormat:L(@"DownloadingFile"), fileName];
     _progressHeader.hidden = NO;
 
     NSURLRequest *req = [NSURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:60.0];
@@ -144,12 +158,27 @@
 
 - (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response
 {
+    if (connection != _activeConnection) return;
+    if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
+        NSInteger status = [(NSHTTPURLResponse *)response statusCode];
+        if (status != 200) {
+            [connection cancel];
+            [self connection:connection didFailWithError:KWMakeError(KWErrorNetwork, [NSString stringWithFormat:@"HTTP %ld", (long)status])];
+            return;
+        }
+    }
     _totalBytes = response.expectedContentLength;
 }
 
 - (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data
 {
-    [_fileHandle writeData:data];
+    if (connection != _activeConnection) return;
+    @try { [_fileHandle writeData:data]; }
+    @catch (NSException *exception) {
+        [connection cancel];
+        [self connection:connection didFailWithError:KWMakeError(KWErrorIO, L(@"DownloadSaveFailed"))];
+        return;
+    }
     _receivedBytes += data.length;
 
     if (_totalBytes > 0) {
@@ -161,16 +190,27 @@
 
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection
 {
+    if (connection != _activeConnection) return;
+    if (_totalBytes > 0 && _receivedBytes != _totalBytes) {
+        [self connection:connection didFailWithError:KWMakeError(KWErrorIO, L(@"DownloadSaveFailed"))];
+        return;
+    }
     [_fileHandle closeFile];
     _fileHandle = nil;
     _activeConnection = nil;
 
-    [[NSFileManager defaultManager] moveItemAtPath:_downloadTempPath toPath:_downloadDestPath error:nil];
+    NSError *saveError = nil;
+    if (![[NSFileManager defaultManager] moveItemAtPath:_downloadTempPath toPath:_downloadDestPath error:&saveError]) {
+        [[NSFileManager defaultManager] removeItemAtPath:_downloadTempPath error:nil];
+        _progressHeader.hidden = YES;
+        [[[UIAlertView alloc] initWithTitle:L(@"Error") message:saveError.localizedDescription delegate:nil cancelButtonTitle:L(@"OK") otherButtonTitles:nil] show];
+        return;
+    }
     [[KWArchiveManager sharedManager] rescanArchives];
 
     _progressHeader.hidden = YES;
     UIAlertView *doneAlert = [[UIAlertView alloc] initWithTitle:L(@"Done")
-                                                        message:@"ZIM archive downloaded successfully!"
+                                                        message:L(@"DownloadComplete")
                                                        delegate:nil
                                               cancelButtonTitle:L(@"OK")
                                               otherButtonTitles:nil];
@@ -203,7 +243,7 @@
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
 {
-    return @"Featured Archives (Mobile Friendly)";
+    return L(@"FeaturedArchives");
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
@@ -218,6 +258,9 @@
     if (!cell) {
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:CellId];
     }
+    cell.backgroundColor = [UIColor whiteColor];
+    cell.textLabel.font = [UIFont fontWithName:@"HelveticaNeue" size:17];
+    cell.detailTextLabel.font = [UIFont fontWithName:@"HelveticaNeue" size:12];
 
     NSDictionary *item = _featuredArchives[indexPath.row];
     cell.textLabel.text = item[@"name"];

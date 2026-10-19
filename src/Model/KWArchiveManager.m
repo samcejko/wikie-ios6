@@ -4,6 +4,7 @@
 @interface KWArchiveManager () {
     NSMutableArray *_archives;
     BOOL _isScanning;
+    BOOL _scanAgain;
 }
 @end
 
@@ -73,7 +74,7 @@
 - (void)rescanArchives
 {
     @synchronized(self) {
-        if (_isScanning) return;
+        if (_isScanning) { _scanAgain = YES; return; }
         _isScanning = YES;
     }
 
@@ -137,29 +138,24 @@
             }
         }
 
-        // Close removed archives
-        for (ZIMFile *f in oldArchives) {
-            if (![newArchives containsObject:f]) {
-                [f close];
-            }
-        }
-
-        @synchronized(self) {
-            _archives = newArchives;
-
-            // Maintain or set active archive
-            if (_archives.count > 0) {
-                if (!_activeArchive || ![_archives containsObject:_activeArchive]) {
-                    _activeArchive = _archives[0];
-                }
-            } else {
-                _activeArchive = nil;
-            }
-            _isScanning = NO;
-        }
-
+        // Publish together with the table reload on the main queue. Readers keep
+        // their archive alive; its handle closes only when the last owner releases it.
         dispatch_async(dispatch_get_main_queue(), ^{
+            NSMutableArray *available = [NSMutableArray array];
+            for (ZIMFile *file in newArchives) {
+                if ([fm fileExistsAtPath:file.filePath]) [available addObject:file];
+            }
+            @synchronized(self) {
+                _archives = available;
+                if (!_activeArchive || ![_archives containsObject:_activeArchive]) {
+                    _activeArchive = _archives.count ? _archives[0] : nil;
+                }
+                _isScanning = NO;
+            }
             [[NSNotificationCenter defaultCenter] postNotificationName:KWLibraryDidChangeNotification object:self];
+            BOOL again;
+            @synchronized(self) { again = _scanAgain; _scanAgain = NO; }
+            if (again) [self rescanArchives];
         });
     });
 }
@@ -169,7 +165,7 @@
     if (!file) return NO;
 
     NSString *path = file.filePath;
-    [file close];
+    if (![[NSFileManager defaultManager] removeItemAtPath:path error:error]) return NO;
 
     @synchronized(self) {
         [_archives removeObject:file];
@@ -178,11 +174,11 @@
         }
     }
 
-    BOOL removed = [[NSFileManager defaultManager] removeItemAtPath:path error:error];
+
     dispatch_async(dispatch_get_main_queue(), ^{
         [[NSNotificationCenter defaultCenter] postNotificationName:KWLibraryDidChangeNotification object:self];
     });
-    return removed;
+    return YES;
 }
 
 @end

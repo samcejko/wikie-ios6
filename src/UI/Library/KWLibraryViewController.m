@@ -43,7 +43,7 @@
     _emptyStateLabel.numberOfLines = 0;
     _emptyStateLabel.textAlignment = NSTextAlignmentCenter;
     _emptyStateLabel.textColor = [UIColor grayColor];
-    _emptyStateLabel.font = [UIFont systemFontOfSize:15];
+    _emptyStateLabel.font = [UIFont fontWithName:@"HelveticaNeue" size:15];
     _emptyStateLabel.text = [NSString stringWithFormat:@"%@\n\n%@", L(@"NoArchivesTitle"), L(@"NoArchivesMessage")];
     _emptyStateLabel.hidden = YES;
 
@@ -136,12 +136,13 @@
 
     ZIMFile *archive = [KWArchiveManager sharedManager].archives[indexPath.row];
     cell.textLabel.text = archive.title ? archive.title : archive.archiveId;
-    cell.textLabel.font = [UIFont boldSystemFontOfSize:16];
+    cell.textLabel.font = [UIFont fontWithName:@"HelveticaNeue-Bold" size:16];
 
     NSString *countStr = [NSString stringWithFormat:L(@"ArticlesCount"), archive.articleCount];
     NSString *sizeStr = KWFormattedFileSize(archive.fileSize);
     cell.detailTextLabel.text = [NSString stringWithFormat:@"%@ • %@", countStr, sizeStr];
-    cell.detailTextLabel.font = [UIFont systemFontOfSize:13];
+    cell.detailTextLabel.font = [UIFont fontWithName:@"HelveticaNeue" size:13];
+    cell.backgroundColor = [UIColor whiteColor];
 
     if (archive.faviconData) {
         cell.imageView.image = [UIImage imageWithData:archive.faviconData];

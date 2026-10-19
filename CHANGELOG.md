@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3
+
+- Restored the glossy iOS 6 navigation, toolbar, buttons, and search bar on newer iOS versions.
+- Used Helvetica Neue for app controls across both architectures.
+- Refreshed the featured ZIM links and routed them through direct HTTP mirrors to avoid obsolete HTTPS redirects on iOS 6.
+- Updated the Czech mini Wikipedia archive to the 2026-09 edition.
+
 ## 1.0.0
 
 - Initial release of Wikie for iOS 6.0 – 6.1.6 (ARMv7).

@@ -31,12 +31,14 @@
     _searchBar.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     _searchBar.placeholder = L(@"SearchPlaceholder");
     _searchBar.delegate = self;
+    _searchBar.tintColor = [UIColor colorWithRed:0.25 green:0.35 blue:0.48 alpha:1.0];
     [self.view addSubview:_searchBar];
 
     _tableView = [[UITableView alloc] initWithFrame:CGRectMake(0, 44, self.view.bounds.size.width, self.view.bounds.size.height - 44) style:UITableViewStylePlain];
     _tableView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     _tableView.dataSource = self;
     _tableView.delegate = self;
+    _tableView.backgroundColor = [UIColor whiteColor];
     [self.view addSubview:_tableView];
 
     [_searchBar becomeFirstResponder];
@@ -91,6 +93,9 @@
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:CellId];
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     }
+    cell.backgroundColor = [UIColor whiteColor];
+    cell.textLabel.font = [UIFont fontWithName:@"HelveticaNeue" size:16];
+    cell.detailTextLabel.font = [UIFont fontWithName:@"HelveticaNeue" size:12];
 
     ZIMEntry *entry = _searchResults[indexPath.row];
     cell.textLabel.text = entry.title;

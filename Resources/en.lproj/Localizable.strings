@@ -29,3 +29,18 @@
 "Forward" = "Forward";
 "LargerText" = "Larger text";
 "SmallerText" = "Smaller text";
+
+"ImportFailed" = "Import failed";
+
+"UploadInvalidRequest" = "Invalid upload request.";
+
+"UploadComplete" = "Archive saved.";
+
+"UploadFailed" = "Upload failed. Please try again.";
+
+"DownloadInvalidURL" = "Enter a valid HTTP or HTTPS address.";
+"DownloadBusy" = "A download is already in progress.";
+"FeaturedArchives" = "Featured archives for mobile devices";
+"DownloadingFile" = "Downloading %@…";
+"DownloadComplete" = "The ZIM archive was downloaded.";
+"DownloadSaveFailed" = "Could not save the downloaded archive. Check available storage.";

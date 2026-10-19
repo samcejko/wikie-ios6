@@ -1,6 +1,6 @@
 Package: com.samcejko.wikie
 Name: Wikie
-Version: 1.0.2
+Version: 1.0.3
 Architecture: iphoneos-arm
 Description: Offline Wikipedia and ZIM reader for iOS 6
  Wikie brings the world's knowledge to iOS 6 devices without an internet

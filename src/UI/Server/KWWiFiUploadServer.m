@@ -8,6 +8,9 @@
 #include <ifaddrs.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdio.h>
+#include <sys/time.h>
+#include <errno.h>
 
 @interface KWWiFiUploadServer () {
     int _listenSocket;
@@ -79,8 +82,16 @@
     _isRunning = YES;
     KWLog(@"Wi-Fi upload server started on %@", [self serverURL]);
 
+    // The loop owns a separate descriptor, so restarting cannot reuse its fd.
+    int listener = dup(_listenSocket);
+    if (listener < 0) {
+        [self stop];
+        if (error) *error = KWMakeError(KWErrorNetwork, @"Failed to start listener");
+        return NO;
+    }
     dispatch_async(_serverQueue, ^{
-        [self acceptLoop];
+        [self acceptLoop:listener];
+        close(listener);
     });
 
     return YES;
@@ -91,6 +102,7 @@
     if (!_isRunning) return;
     _isRunning = NO;
     if (_listenSocket >= 0) {
+        shutdown(_listenSocket, SHUT_RDWR);
         close(_listenSocket);
         _listenSocket = -1;
     }
@@ -106,7 +118,7 @@
     if (success == 0) {
         temp_addr = interfaces;
         while (temp_addr != NULL) {
-            if (temp_addr->ifa_addr->sa_family == AF_INET) {
+            if (temp_addr->ifa_addr && temp_addr->ifa_addr->sa_family == AF_INET) {
                 NSString *name = [NSString stringWithUTF8String:temp_addr->ifa_name];
                 if ([name isEqualToString:@"en0"] || [name isEqualToString:@"en1"]) {
                     address = [NSString stringWithUTF8String:inet_ntoa(((struct sockaddr_in *)temp_addr->ifa_addr)->sin_addr)];
@@ -125,15 +137,15 @@
     return [NSString stringWithFormat:@"http://%@:%u", [self localIPAddress], _port];
 }
 
-- (void)acceptLoop
+- (void)acceptLoop:(int)listener
 {
-    while (_isRunning && _listenSocket >= 0) {
+    while (YES) {
         struct sockaddr_in clientAddr;
         socklen_t clientLen = sizeof(clientAddr);
-        int clientSock = accept(_listenSocket, (struct sockaddr *)&clientAddr, &clientLen);
+        int clientSock = accept(listener, (struct sockaddr *)&clientAddr, &clientLen);
         if (clientSock < 0) {
-            if (!_isRunning) break;
-            continue;
+            if (errno == EINTR) continue;
+            break;
         }
 
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -142,133 +154,107 @@
     }
 }
 
+- (void)respondToClient:(int)sock status:(NSInteger)status body:(NSString *)body html:(BOOL)html
+{
+    NSData *data = [body dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *header = [NSString stringWithFormat:@"HTTP/1.1 %ld %@\r\nContent-Type: %@; charset=utf-8\r\nContent-Length: %lu\r\nConnection: close\r\n\r\n",
+        (long)status, status == 200 ? @"OK" : @"Error", html ? @"text/html" : @"text/plain", (unsigned long)data.length];
+    NSMutableData *response = [[header dataUsingEncoding:NSUTF8StringEncoding] mutableCopy];
+    [response appendData:data];
+    NSUInteger sent = 0;
+    while (sent < response.length) {
+        ssize_t n = send(sock, (const char *)response.bytes + sent, response.length - sent, 0);
+        if (n <= 0) break;
+        sent += (NSUInteger)n;
+    }
+    close(sock);
+}
+
 - (void)handleClient:(int)sock
 {
-    char initialBuf[8192];
-    ssize_t bytesRead = recv(sock, initialBuf, sizeof(initialBuf) - 1, 0);
-    if (bytesRead <= 0) {
-        close(sock);
-        return;
+    int noSignal = 1;
+    setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &noSignal, sizeof(noSignal));
+    struct timeval timeout = {30, 0};
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    NSMutableData *received = [NSMutableData data];
+    NSData *separator = [@"\r\n\r\n" dataUsingEncoding:NSASCIIStringEncoding];
+    NSRange end = NSMakeRange(NSNotFound, 0);
+    char chunk[32768];
+    while (end.location == NSNotFound && received.length < 65536) {
+        ssize_t n = recv(sock, chunk, sizeof(chunk), 0);
+        if (n <= 0) break;
+        [received appendBytes:chunk length:(NSUInteger)n];
+        end = [received rangeOfData:separator options:0 range:NSMakeRange(0, received.length)];
     }
-    initialBuf[bytesRead] = '\0';
-
-    NSString *headerString = [NSString stringWithCString:initialBuf encoding:NSISOLatin1StringEncoding];
-
-    if ([headerString hasPrefix:@"GET / "] || [headerString hasPrefix:@"GET /index.html"]) {
-        NSString *html = @"<!DOCTYPE html><html><head><meta charset='utf-8'>"
-        "<meta name='viewport' content='width=device-width, initial-scale=1'>"
-        "<title>Kiwix iOS 6 - File Transfer</title>"
-        "<style>body{font-family:sans-serif;max-width:600px;margin:40px auto;padding:20px;text-align:center;background:#f5f5f7}"
-        ".box{background:white;padding:30px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1)}"
-        "h1{color:#333;margin-bottom:10px}p{color:#666;font-size:15px}"
-        "input[type=file]{margin:20px 0;padding:12px;border:2px dashed #ccc;width:90%;border-radius:8px}"
-        "button{background:#0b57d0;color:white;border:none;padding:12px 28px;font-size:16px;border-radius:6px;cursor:pointer}"
-        "</style></head><body><div class='box'>"
-        "<h1>Kiwix for iOS 6</h1>"
-        "<p>Upload <b>.zim</b> Wikipedia files directly to your device:</p>"
-        "<form method='POST' action='/upload' enctype='multipart/form-data'>"
-        "<input type='file' name='zimfile' accept='.zim' required><br>"
-        "<button type='submit'>Upload to Device</button>"
-        "</form></div></body></html>";
-
-        NSString *headers = [NSString stringWithFormat:@"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %lu\r\nConnection: close\r\n\r\n", (unsigned long)[html lengthOfBytesUsingEncoding:NSUTF8StringEncoding]];
-        send(sock, [headers UTF8String], [headers lengthOfBytesUsingEncoding:NSUTF8StringEncoding], 0);
-        send(sock, [html UTF8String], [html lengthOfBytesUsingEncoding:NSUTF8StringEncoding], 0);
-        close(sock);
-        return;
+    if (end.location == NSNotFound || end.location > 65536) {
+        [self respondToClient:sock status:400 body:L(@"UploadInvalidRequest") html:NO]; return;
     }
-
-    if ([headerString hasPrefix:@"POST /upload"]) {
-        // Parse Content-Length
-        long long contentLength = 0;
-        NSRange clRange = [headerString rangeOfString:@"Content-Length: " options:NSCaseInsensitiveSearch];
-        if (clRange.location != NSNotFound) {
-            NSUInteger start = clRange.location + clRange.length;
-            NSUInteger end = [headerString rangeOfString:@"\r\n" options:0 range:NSMakeRange(start, headerString.length - start)].location;
-            if (end != NSNotFound) {
-                contentLength = [[headerString substringWithRange:NSMakeRange(start, end - start)] longLongValue];
-            }
-        }
-
-        // Parse filename
-        NSString *filename = @"upload.zim";
-        NSRange fnRange = [headerString rangeOfString:@"filename=\"" options:NSCaseInsensitiveSearch];
-        if (fnRange.location != NSNotFound) {
-            NSUInteger start = fnRange.location + fnRange.length;
-            NSUInteger end = [headerString rangeOfString:@"\"" options:0 range:NSMakeRange(start, headerString.length - start)].location;
-            if (end != NSNotFound) {
-                filename = [headerString substringWithRange:NSMakeRange(start, end - start)];
-            }
-        }
-
-        filename = [[filename lastPathComponent] stringByReplacingOccurrencesOfString:@"/" withString:@"_"];
-        if (![[[filename pathExtension] lowercaseString] isEqualToString:@"zim"]) {
-            filename = [filename stringByAppendingPathExtension:@"zim"];
-        }
-
-        // Find boundary and start of body
-        char *headerEnd = strstr(initialBuf, "\r\n\r\n");
-        if (headerEnd) {
-            // Locate secondary multipart header boundary if multipart
-            char *fileStart = strstr(headerEnd + 4, "\r\n\r\n");
-            if (fileStart) {
-                fileStart += 4;
-            } else {
-                fileStart = headerEnd + 4;
-            }
-
-            NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-            NSString *docsDir = [paths count] > 0 ? [paths objectAtIndex:0] : nil;
-            NSString *targetPath = [docsDir stringByAppendingPathComponent:filename];
-
-            FILE *outFile = fopen([targetPath UTF8String], "wb");
-            if (outFile) {
-                size_t headerBytes = (size_t)(fileStart - initialBuf);
-                size_t initialDataBytes = (size_t)(bytesRead - headerBytes);
-
-                if (initialDataBytes > 0) {
-                    fwrite(fileStart, 1, initialDataBytes, outFile);
-                }
-
-                long long totalWritten = initialDataBytes;
-                char chunk[32768];
-
-                while (totalWritten < contentLength - 1000) { // approximate boundary padding
-                    ssize_t n = recv(sock, chunk, sizeof(chunk), 0);
-                    if (n <= 0) break;
-                    fwrite(chunk, 1, n, outFile);
-                    totalWritten += n;
-                }
-
-                fclose(outFile);
-                KWLog(@"Successfully uploaded %@ (%lld bytes)", filename, totalWritten);
-
-                [[KWArchiveManager sharedManager] rescanArchives];
-
-                NSString *successHTML = [NSString stringWithFormat:@"<!DOCTYPE html><html><head><meta charset='utf-8'>"
-                "<meta name='viewport' content='width=device-width, initial-scale=1'>"
-                "<title>Upload Successful</title>"
-                "<style>body{font-family:sans-serif;max-width:600px;margin:40px auto;padding:20px;text-align:center;background:#f5f5f7}"
-                ".box{background:white;padding:30px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1)}"
-                "h1{color:#2e7d32;margin-bottom:10px}a{display:inline-block;margin-top:20px;color:#0b57d0;text-decoration:none;font-weight:bold}"
-                "</style></head><body><div class='box'>"
-                "<h1>Upload Complete!</h1>"
-                "<p>Successfully saved <b>%@</b> to your library.</p>"
-                "<a href='/'>Upload Another File</a>"
-                "</div></body></html>", filename];
-
-                NSString *respHeaders = [NSString stringWithFormat:@"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %lu\r\nConnection: close\r\n\r\n", (unsigned long)[successHTML lengthOfBytesUsingEncoding:NSUTF8StringEncoding]];
-                send(sock, [respHeaders UTF8String], [respHeaders lengthOfBytesUsingEncoding:NSUTF8StringEncoding], 0);
-                send(sock, [successHTML UTF8String], [successHTML lengthOfBytesUsingEncoding:NSUTF8StringEncoding], 0);
-                close(sock);
-                return;
-            }
-        }
+    NSString *header = [[NSString alloc] initWithBytes:received.bytes length:end.location encoding:NSISOLatin1StringEncoding];
+    NSArray *lines = [header componentsSeparatedByString:@"\r\n"];
+    NSString *request = lines.count ? lines[0] : @"";
+    if ([request isEqualToString:@"GET / HTTP/1.1"] || [request isEqualToString:@"GET / HTTP/1.0"]) {
+        NSString *page = @"<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width'>"
+            "<title>Wikie</title><style>body{font:18px sans-serif;max-width:40em;margin:3em auto;padding:1em}</style>"
+            "<h1>Wikie</h1><p>Nahrát archiv / Upload archive (.zim)</p>"
+            "<input id='file' type='file' accept='.zim'><button id='upload'>Nahrát / Upload</button><p id='status'></p>"
+            "<script>document.getElementById('upload').onclick=function(){var f=document.getElementById('file').files[0];"
+            "if(!f)return;var b=this,s=document.getElementById('status'),x=new XMLHttpRequest();b.disabled=true;"
+            "x.open('POST','/upload');x.setRequestHeader('Content-Type','application/octet-stream');"
+            "x.setRequestHeader('X-Filename',encodeURIComponent(f.name));"
+            "x.upload.onprogress=function(e){if(e.lengthComputable)s.textContent=Math.round(e.loaded/e.total*100)+'%';};"
+            "x.onload=function(){s.textContent=x.responseText;b.disabled=false;};"
+            "x.onerror=function(){s.textContent='Chyba přenosu / Transfer failed';b.disabled=false;};x.send(f);};</script>";
+        [self respondToClient:sock status:200 body:page html:YES]; return;
     }
-
-    NSString *resp = @"HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nBad Request";
-    send(sock, [resp UTF8String], [resp lengthOfBytesUsingEncoding:NSUTF8StringEncoding], 0);
-    close(sock);
+    NSMutableDictionary *fields = [NSMutableDictionary dictionary];
+    for (NSUInteger i = 1; i < lines.count; i++) {
+        NSString *line = lines[i]; NSRange colon = [line rangeOfString:@":"];
+        if (colon.location == NSNotFound) continue;
+        fields[[[line substringToIndex:colon.location] lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]] =
+            [[line substringFromIndex:colon.location + 1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    }
+    NSString *lengthText = fields[@"content-length"];
+    NSCharacterSet *nonDigits = [[NSCharacterSet decimalDigitCharacterSet] invertedSet];
+    long long length = [lengthText longLongValue];
+    NSString *filename = [[fields[@"x-filename"] stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding] lastPathComponent];
+    if (![request hasPrefix:@"POST /upload HTTP/1."] || length < 80 || !lengthText.length ||
+        [lengthText rangeOfCharacterFromSet:nonDigits].location != NSNotFound || fields[@"transfer-encoding"] ||
+        ![[filename.pathExtension lowercaseString] isEqualToString:@"zim"] || ![fields[@"content-type"] isEqualToString:@"application/octet-stream"]) {
+        [self respondToClient:sock status:400 body:L(@"UploadInvalidRequest") html:NO]; return;
+    }
+    NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0];
+    NSString *temporary = [docs stringByAppendingPathComponent:[NSString stringWithFormat:@".%@.upload", [[NSUUID UUID] UUIDString]]];
+    FILE *file = fopen(temporary.fileSystemRepresentation, "wb");
+    BOOL ok = file != NULL;
+    uint64_t remaining = (uint64_t)length;
+    NSUInteger bodyStart = NSMaxRange(end), initial = received.length - bodyStart;
+    if (ok && initial) {
+        size_t count = (size_t)MIN((uint64_t)initial, remaining);
+        ok = fwrite((const char *)received.bytes + bodyStart, 1, count, file) == count;
+        remaining -= count;
+    }
+    while (ok && remaining) {
+        ssize_t n = recv(sock, chunk, (size_t)MIN(remaining, (uint64_t)sizeof(chunk)), 0);
+        if (n <= 0) { ok = NO; break; }
+        ok = fwrite(chunk, 1, (size_t)n, file) == (size_t)n;
+        remaining -= (uint64_t)n;
+    }
+    if (file && fclose(file) != 0) ok = NO;
+    if (ok) {
+        unsigned char magic[4] = {0};
+        FILE *check = fopen(temporary.fileSystemRepresentation, "rb");
+        ok = check && fread(magic, 1, sizeof(magic), check) == sizeof(magic) &&
+            magic[0] == 0x5a && magic[1] == 0x49 && magic[2] == 0x4d && magic[3] == 0x04;
+        if (check) fclose(check);
+    }
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSString *target = [docs stringByAppendingPathComponent:filename];
+    if ([fm fileExistsAtPath:target]) target = [docs stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-%@.zim", filename.stringByDeletingPathExtension, [[NSUUID UUID] UUIDString]]];
+    if (ok) ok = [fm moveItemAtPath:temporary toPath:target error:nil];
+    if (!ok) [fm removeItemAtPath:temporary error:nil];
+    if (ok) [[KWArchiveManager sharedManager] rescanArchives];
+    [self respondToClient:sock status:ok ? 200 : 400 body:L(ok ? @"UploadComplete" : @"UploadFailed") html:NO];
 }
 
 @end
