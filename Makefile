@@ -1,11 +1,11 @@
 # Kiwix - offline Wikipedia and ZIM reader for jailbroken iOS 6.x (armv7).
-# Built with Theos. Deployment target iOS 6.0, compiled against the iOS 9.3 SDK.
+# Built with Theos. Deployment target iOS 5.0, compiled against the iOS 9.3 SDK.
 
 ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
 TARGET := iphone:clang:16.5:14.0
 ARCHS := arm64
 else
-TARGET := iphone:clang:9.3:6.0
+TARGET := iphone:clang:9.3:5.0
 ARCHS := armv7
 endif
 DEBUG ?= 0

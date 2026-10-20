@@ -191,7 +191,7 @@ jobs:
         run: |
           set -e
           export PATH="$THEOS/toolchain/linux/iphone/bin:$THEOS/bin:$PATH"
-          if [ -n "${{ matrix.scheme }}" ]; then ARCH=arm64; SDK=16.5; MIN=14.0; else ARCH=armv7; SDK=9.3; MIN=${COMPATIBILITY_MIN:-6.0}; fi
+          if [ -n "${{ matrix.scheme }}" ]; then ARCH=arm64; SDK=16.5; MIN=14.0; else ARCH=armv7; SDK=9.3; MIN=${COMPATIBILITY_MIN:-5.0}; fi
           mkdir -p /tmp/zim-test-objects
           for SRC in tools/zim-selftest.m src/ZIM/*.m src/Protocol/KWZIMURLProtocol.m src/KWCommon.m; do
             clang -target $ARCH-apple-ios$MIN -isysroot "$THEOS/sdks/iPhoneOS$SDK.sdk" -fobjc-arc -fblocks -Wno-deprecated-declarations -Isrc -Isrc/ZIM -Isrc/Protocol -Isrc/Model -c "$SRC" -o "/tmp/zim-test-objects/$(basename "$SRC").o"

@@ -24,9 +24,9 @@
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleShortVersionString</key>
-    <string>1.0.6</string>
+    <string>1.0.7</string>
 	<key>CFBundleVersion</key>
-    <string>6</string>
+    <string>1.0.7</string>
 	<key>CFBundleSupportedPlatforms</key>
 	<array>
 		<string>iPhoneOS</string>
@@ -36,7 +36,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>MinimumOSVersion</key>
-	<string>6.0</string>
+	<string>5.0</string>
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<!-- The catalog supports user-entered HTTP archive URLs on iOS 9 and newer. -->
