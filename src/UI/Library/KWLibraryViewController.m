@@ -7,6 +7,7 @@
 
 @interface KWLibraryViewController () {
     UILabel *_emptyStateLabel;
+    UIControl *_archiveRefreshControl;
 }
 @end
 
@@ -32,10 +33,20 @@
 
     self.tableView.rowHeight = 64;
 
-    // iOS 6 native UIRefreshControl on UITableViewController
-    UIRefreshControl *rc = [[UIRefreshControl alloc] init];
-    [rc addTarget:self action:@selector(pullToRefresh:) forControlEvents:UIControlEventValueChanged];
-    self.refreshControl = rc;
+    // iOS 5 has neither UIRefreshControl nor UITableViewController.refreshControl.
+    Class refreshClass = NSClassFromString(@"UIRefreshControl");
+    if (refreshClass && [self respondsToSelector:@selector(setRefreshControl:)]) {
+        _archiveRefreshControl = [[refreshClass alloc] init];
+        [_archiveRefreshControl addTarget:self action:@selector(pullToRefresh:) forControlEvents:UIControlEventValueChanged];
+        [self performSelector:@selector(setRefreshControl:) withObject:_archiveRefreshControl];
+    } else {
+        UIButton *refreshButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
+        refreshButton.frame = CGRectMake(0, 0, self.tableView.bounds.size.width, 44);
+        refreshButton.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+        [refreshButton setTitle:L(@"RefreshLibrary") forState:UIControlStateNormal];
+        [refreshButton addTarget:self action:@selector(pullToRefresh:) forControlEvents:UIControlEventTouchUpInside];
+        self.tableView.tableHeaderView = refreshButton;
+    }
 
     // Empty state label
     _emptyStateLabel = [[UILabel alloc] initWithFrame:self.tableView.bounds];
@@ -77,7 +88,9 @@
 
 - (void)libraryChanged:(NSNotification *)note
 {
-    [self.refreshControl endRefreshing];
+    if ([_archiveRefreshControl respondsToSelector:@selector(endRefreshing)]) {
+        [_archiveRefreshControl performSelector:@selector(endRefreshing)];
+    }
     [self.tableView reloadData];
     [self updateEmptyState];
 }
@@ -94,7 +107,14 @@
     KWWiFiUploadServer *server = [KWWiFiUploadServer sharedServer];
     if (!server.isRunning) {
         NSError *err = nil;
-        [server startWithPort:8080 error:&err];
+        if (![server startWithPort:8080 error:&err]) {
+            [[[UIAlertView alloc] initWithTitle:L(@"Error")
+                                       message:L(@"WiFiServerStartFailed")
+                                      delegate:nil
+                             cancelButtonTitle:L(@"OK")
+                             otherButtonTitles:nil] show];
+            return;
+        }
     }
 
     NSString *msg = [NSString stringWithFormat:@"%@\n%@\n\n%@", L(@"WiFiServerRunning"), server.serverURL, L(@"WiFiServerHint")];

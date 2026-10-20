@@ -1,5 +1,7 @@
 /* Kiwix iOS 6 Czech strings */
 "Library" = "Knihovna";
+"RefreshLibrary" = "Obnovit knihovnu";
+"WiFiServerStartFailed" = "Přenos přes Wi-Fi se nepodařilo spustit. Zkontrolujte síťové připojení a zkuste to znovu.";
 "Search" = "Hledat";
 "Bookmarks" = "Záložky";
 "Downloads" = "Stahování";

@@ -132,7 +132,7 @@
 
     _downloadDestPath = [docsDir stringByAppendingPathComponent:fileName];
     if ([[NSFileManager defaultManager] fileExistsAtPath:_downloadDestPath]) {
-        _downloadDestPath = [docsDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-%@.zim", fileName.stringByDeletingPathExtension, [[NSUUID UUID] UUIDString]]];
+        _downloadDestPath = [docsDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-%@.zim", fileName.stringByDeletingPathExtension, KWUniqueIdentifier()]];
     }
     _downloadTempPath = [_downloadDestPath stringByAppendingPathExtension:@"tmp"];
 

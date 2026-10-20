@@ -226,7 +226,7 @@
         [self respondToClient:sock status:400 body:L(@"UploadInvalidRequest") html:NO]; return;
     }
     NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0];
-    NSString *temporary = [docs stringByAppendingPathComponent:[NSString stringWithFormat:@".%@.upload", [[NSUUID UUID] UUIDString]]];
+    NSString *temporary = [docs stringByAppendingPathComponent:[NSString stringWithFormat:@".%@.upload", KWUniqueIdentifier()]];
     FILE *file = fopen(temporary.fileSystemRepresentation, "wb");
     BOOL ok = file != NULL;
     uint64_t remaining = (uint64_t)length;
@@ -252,7 +252,7 @@
     }
     NSFileManager *fm = [NSFileManager defaultManager];
     NSString *target = [docs stringByAppendingPathComponent:filename];
-    if ([fm fileExistsAtPath:target]) target = [docs stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-%@.zim", filename.stringByDeletingPathExtension, [[NSUUID UUID] UUIDString]]];
+    if ([fm fileExistsAtPath:target]) target = [docs stringByAppendingPathComponent:[NSString stringWithFormat:@"%@-%@.zim", filename.stringByDeletingPathExtension, KWUniqueIdentifier()]];
     if (ok) ok = [fm moveItemAtPath:temporary toPath:target error:nil];
     if (!ok) [fm removeItemAtPath:temporary error:nil];
     if (ok) [[KWArchiveManager sharedManager] rescanArchives];

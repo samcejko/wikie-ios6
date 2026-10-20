@@ -6,6 +6,12 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      compatibility_min:
+        description: "Compile-only minimum iOS for armv7 (4.3, 5.0, 5.1, 6.0); blank for a normal build. No release uploads when set."
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -14,6 +20,7 @@ env:
   THEOS: /home/runner/theos
   THEOS_CACHE_KEY: theos-linux-clang11-sdk93-sdk165-v2
   MBEDTLS_VERSION: "3.6.7"
+  COMPATIBILITY_MIN: ${{ inputs.compatibility_min }}
 
 jobs:
   build:
@@ -147,12 +154,22 @@ jobs:
 
       - name: Build (${{ matrix.name }})
         run: |
-          set -o pipefail
+          set -eo pipefail
           export PATH="$THEOS/toolchain/linux/iphone/bin:$THEOS/bin:$PATH"
           export THEOS=${{ env.THEOS }}
+          EXTRA=()
+          if [ -n "$COMPATIBILITY_MIN" ]; then
+            case "$COMPATIBILITY_MIN" in
+              4.3|5.0|5.1|6.0) ;;
+              *) echo "Unsupported compatibility minimum"; exit 1 ;;
+            esac
+            if [ -z "${{ matrix.scheme }}" ]; then
+              EXTRA+=("TARGET=iphone:clang:9.3:$COMPATIBILITY_MIN")
+            fi
+          fi
           if [ -n "${{ matrix.scheme }}" ]; then export THEOS_PACKAGE_SCHEME="${{ matrix.scheme }}"; fi
           make clean || true
-          make package FINALPACKAGE=1 -j"$(nproc)" -k 2>&1 | tee build.log
+          make package FINALPACKAGE=1 "${EXTRA[@]}" -j"$(nproc)" -k 2>&1 | tee build.log
           APP=$(find .theos/_ -type d -name Wikie.app | head -n1)
           test -n "$APP"
           echo "APP=$APP" >> "$GITHUB_ENV"
@@ -174,7 +191,7 @@ jobs:
         run: |
           set -e
           export PATH="$THEOS/toolchain/linux/iphone/bin:$THEOS/bin:$PATH"
-          if [ -n "${{ matrix.scheme }}" ]; then ARCH=arm64; SDK=16.5; MIN=14.0; else ARCH=armv7; SDK=9.3; MIN=6.0; fi
+          if [ -n "${{ matrix.scheme }}" ]; then ARCH=arm64; SDK=16.5; MIN=14.0; else ARCH=armv7; SDK=9.3; MIN=${COMPATIBILITY_MIN:-6.0}; fi
           mkdir -p /tmp/zim-test-objects
           for SRC in tools/zim-selftest.m src/ZIM/*.m src/Protocol/KWZIMURLProtocol.m src/KWCommon.m; do
             clang -target $ARCH-apple-ios$MIN -isysroot "$THEOS/sdks/iPhoneOS$SDK.sdk" -fobjc-arc -fblocks -Wno-deprecated-declarations -Isrc -Isrc/ZIM -Isrc/Protocol -Isrc/Model -c "$SRC" -o "/tmp/zim-test-objects/$(basename "$SRC").o"
@@ -203,6 +220,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Publish packages to the CI prerelease
+        if: inputs.compatibility_min == ''
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -215,7 +233,7 @@ jobs:
           echo "uploaded to the ci-build prerelease:"; ls -la packages/*.ipa packages/*.deb
 
       - name: Publish to release (tags only)
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') && inputs.compatibility_min == ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

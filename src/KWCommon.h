@@ -39,6 +39,8 @@ enum {
 
 NSError *KWMakeError(NSInteger code, NSString *description);
 NSString *KWFormattedFileSize(uint64_t bytes);
+// CFUUID is available before iOS 6, unlike NSUUID.
+NSString *KWUniqueIdentifier(void);
 
 @interface NSArray (KWCompatibility)
 - (id)firstObject;

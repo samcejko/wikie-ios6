@@ -7,6 +7,14 @@ NSString * const KWFontSizeDidChangeNotification = @"KWFontSizeDidChangeNotifica
 
 NSString * const KWErrorDomain = @"com.samcejko.wikie";
 
+NSString *KWUniqueIdentifier(void)
+{
+    CFUUIDRef uuid = CFUUIDCreate(kCFAllocatorDefault);
+    CFStringRef value = CFUUIDCreateString(kCFAllocatorDefault, uuid);
+    CFRelease(uuid);
+    return (__bridge_transfer NSString *)value;
+}
+
 NSError *KWMakeError(NSInteger code, NSString *description)
 {
     NSDictionary *userInfo = @{

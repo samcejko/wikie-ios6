@@ -1,5 +1,7 @@
 /* Kiwix iOS 6 English strings */
 "Library" = "Library";
+"RefreshLibrary" = "Refresh library";
+"WiFiServerStartFailed" = "Could not start Wi-Fi Transfer. Check your network connection and try again.";
 "Search" = "Search";
 "Bookmarks" = "Bookmarks";
 "Downloads" = "Downloads";
