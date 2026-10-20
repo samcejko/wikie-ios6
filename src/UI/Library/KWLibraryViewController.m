@@ -52,7 +52,7 @@
     _emptyStateLabel = [[UILabel alloc] initWithFrame:self.tableView.bounds];
     _emptyStateLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     _emptyStateLabel.numberOfLines = 0;
-    _emptyStateLabel.textAlignment = NSTextAlignmentCenter;
+    _emptyStateLabel.textAlignment = UITextAlignmentCenter;
     _emptyStateLabel.textColor = [UIColor grayColor];
     _emptyStateLabel.font = [UIFont fontWithName:@"HelveticaNeue" size:15];
     _emptyStateLabel.text = [NSString stringWithFormat:@"%@\n\n%@", L(@"NoArchivesTitle"), L(@"NoArchivesMessage")];
