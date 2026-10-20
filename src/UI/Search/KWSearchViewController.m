@@ -97,7 +97,7 @@
     cell.textLabel.font = [UIFont fontWithName:@"HelveticaNeue" size:16];
     cell.detailTextLabel.font = [UIFont fontWithName:@"HelveticaNeue" size:12];
 
-    ZIMEntry *entry = _searchResults[indexPath.row];
+    ZIMEntry *entry = [_searchResults objectAtIndex:indexPath.row];
     cell.textLabel.text = entry.title;
     cell.detailTextLabel.text = [entry fullPath];
 
@@ -108,7 +108,7 @@
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 
-    ZIMEntry *entry = _searchResults[indexPath.row];
+    ZIMEntry *entry = [_searchResults objectAtIndex:indexPath.row];
     if (self.readerVC) {
         [self.readerVC loadEntry:entry archive:self.archive];
         [self.navigationController popViewControllerAnimated:YES];

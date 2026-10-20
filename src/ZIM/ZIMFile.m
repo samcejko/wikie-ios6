@@ -244,7 +244,7 @@
             entry.clusterNumber = *(uint32_t *)(headerBuf + 8);
             entry.blobNumber = *(uint32_t *)(headerBuf + 12);
             if (mimeType < _mimeTypes.count) {
-                entry.mimeType = _mimeTypes[mimeType];
+                entry.mimeType = [_mimeTypes objectAtIndex:mimeType];
             }
             stringsOffset = (off_t)(offset + 16);
         }
@@ -451,7 +451,7 @@
     NSNumber *key = @(clusterIndex);
 
     @synchronized(_clusterCache) {
-        ZIMCluster *cached = _clusterCache[key];
+        ZIMCluster *cached = [_clusterCache objectForKey:key];
         if (cached) {
             [_clusterLRU removeObject:key];
             [_clusterLRU addObject:key];
@@ -502,11 +502,11 @@
 
     @synchronized(_clusterCache) {
         if (_clusterLRU.count >= KW_CLUSTER_CACHE_SIZE) {
-            NSNumber *oldestKey = _clusterLRU[0];
+            NSNumber *oldestKey = [_clusterLRU objectAtIndex:0];
             [_clusterCache removeObjectForKey:oldestKey];
             [_clusterLRU removeObjectAtIndex:0];
         }
-        _clusterCache[key] = cluster;
+        [_clusterCache setObject:cluster forKey:key];
         [_clusterLRU addObject:key];
     }
 

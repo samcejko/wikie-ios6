@@ -192,7 +192,7 @@
     }
     NSString *header = [[NSString alloc] initWithBytes:received.bytes length:end.location encoding:NSISOLatin1StringEncoding];
     NSArray *lines = [header componentsSeparatedByString:@"\r\n"];
-    NSString *request = lines.count ? lines[0] : @"";
+    NSString *request = lines.count ? [lines objectAtIndex:0] : @"";
     if ([request isEqualToString:@"GET / HTTP/1.1"] || [request isEqualToString:@"GET / HTTP/1.0"]) {
         NSString *page = @"<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width'>"
             "<title>Wikie</title><style>body{font:18px sans-serif;max-width:40em;margin:3em auto;padding:1em}</style>"
@@ -209,20 +209,20 @@
     }
     NSMutableDictionary *fields = [NSMutableDictionary dictionary];
     for (NSUInteger i = 1; i < lines.count; i++) {
-        NSString *line = lines[i]; NSRange colon = [line rangeOfString:@":"];
+        NSString *line = [lines objectAtIndex:i]; NSRange colon = [line rangeOfString:@":"];
         if (colon.location == NSNotFound) continue;
         NSString *fieldName = [[line substringToIndex:colon.location] lowercaseString];
         fieldName = [fieldName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
         NSString *fieldValue = [[line substringFromIndex:colon.location + 1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-        fields[fieldName] = fieldValue;
+        [fields setObject:fieldValue forKey:fieldName];
     }
-    NSString *lengthText = fields[@"content-length"];
+    NSString *lengthText = [fields objectForKey:@"content-length"];
     NSCharacterSet *nonDigits = [[NSCharacterSet decimalDigitCharacterSet] invertedSet];
     long long length = [lengthText longLongValue];
-    NSString *filename = [[fields[@"x-filename"] stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding] lastPathComponent];
+    NSString *filename = [[[fields objectForKey:@"x-filename"] stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding] lastPathComponent];
     if (![request hasPrefix:@"POST /upload HTTP/1."] || length < 80 || !lengthText.length ||
-        [lengthText rangeOfCharacterFromSet:nonDigits].location != NSNotFound || fields[@"transfer-encoding"] ||
-        ![[filename.pathExtension lowercaseString] isEqualToString:@"zim"] || ![fields[@"content-type"] isEqualToString:@"application/octet-stream"]) {
+        [lengthText rangeOfCharacterFromSet:nonDigits].location != NSNotFound || [fields objectForKey:@"transfer-encoding"] ||
+        ![[filename.pathExtension lowercaseString] isEqualToString:@"zim"] || ![[fields objectForKey:@"content-type"] isEqualToString:@"application/octet-stream"]) {
         [self respondToClient:sock status:400 body:L(@"UploadInvalidRequest") html:NO]; return;
     }
     NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0];

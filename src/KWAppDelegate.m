@@ -48,7 +48,7 @@
     [[KWArchiveManager sharedManager] rescanArchives];
 
     // Handle initial launch URL if any
-    NSURL *launchURL = launchOptions[UIApplicationLaunchOptionsURLKey];
+    NSURL *launchURL = [launchOptions objectForKey:UIApplicationLaunchOptionsURLKey];
     if (launchURL) {
         [self handleOpenURL:launchURL];
     }

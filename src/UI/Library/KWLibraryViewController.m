@@ -154,7 +154,7 @@
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:CellId];
     }
 
-    ZIMFile *archive = [KWArchiveManager sharedManager].archives[indexPath.row];
+    ZIMFile *archive = [[KWArchiveManager sharedManager].archives objectAtIndex:indexPath.row];
     cell.textLabel.text = archive.title ? archive.title : archive.archiveId;
     cell.textLabel.font = [UIFont fontWithName:@"HelveticaNeue-Bold" size:16];
 
@@ -180,7 +180,7 @@
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 
-    ZIMFile *archive = [KWArchiveManager sharedManager].archives[indexPath.row];
+    ZIMFile *archive = [[KWArchiveManager sharedManager].archives objectAtIndex:indexPath.row];
     [KWArchiveManager sharedManager].activeArchive = archive;
     [self.tableView reloadData];
 
@@ -198,7 +198,7 @@
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (editingStyle == UITableViewCellEditingStyleDelete) {
-        ZIMFile *archive = [KWArchiveManager sharedManager].archives[indexPath.row];
+        ZIMFile *archive = [[KWArchiveManager sharedManager].archives objectAtIndex:indexPath.row];
         [[KWArchiveManager sharedManager] deleteArchive:archive error:nil];
     }
 }

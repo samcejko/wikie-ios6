@@ -148,7 +148,7 @@
             @synchronized(self) {
                 _archives = available;
                 if (!_activeArchive || ![_archives containsObject:_activeArchive]) {
-                    _activeArchive = _archives.count ? _archives[0] : nil;
+                    _activeArchive = _archives.count ? [_archives objectAtIndex:0] : nil;
                 }
                 _isScanning = NO;
             }
@@ -170,7 +170,7 @@
     @synchronized(self) {
         [_archives removeObject:file];
         if (_activeArchive == file) {
-            _activeArchive = _archives.count > 0 ? _archives[0] : nil;
+            _activeArchive = _archives.count > 0 ? [_archives objectAtIndex:0] : nil;
         }
     }
 

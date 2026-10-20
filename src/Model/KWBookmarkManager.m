@@ -60,7 +60,7 @@
 - (void)removeBookmarkWithUrl:(NSString *)url archiveId:(NSString *)archiveId
 {
     NSIndexSet *toRemove = [_bookmarksList indexesOfObjectsPassingTest:^BOOL(NSDictionary *obj, NSUInteger idx, BOOL *stop) {
-        return [obj[@"url"] isEqualToString:url] && [obj[@"archiveId"] isEqualToString:archiveId];
+        return [[obj objectForKey:@"url"] isEqualToString:url] && [[obj objectForKey:@"archiveId"] isEqualToString:archiveId];
     }];
     if (toRemove.count > 0) {
         [_bookmarksList removeObjectsAtIndexes:toRemove];
@@ -71,7 +71,7 @@
 - (BOOL)isBookmarkedUrl:(NSString *)url archiveId:(NSString *)archiveId
 {
     for (NSDictionary *obj in _bookmarksList) {
-        if ([obj[@"url"] isEqualToString:url] && [obj[@"archiveId"] isEqualToString:archiveId]) {
+        if ([[obj objectForKey:@"url"] isEqualToString:url] && [[obj objectForKey:@"archiveId"] isEqualToString:archiveId]) {
             return YES;
         }
     }

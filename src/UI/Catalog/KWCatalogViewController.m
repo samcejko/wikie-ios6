@@ -262,9 +262,9 @@
     cell.textLabel.font = [UIFont fontWithName:@"HelveticaNeue" size:17];
     cell.detailTextLabel.font = [UIFont fontWithName:@"HelveticaNeue" size:12];
 
-    NSDictionary *item = _featuredArchives[indexPath.row];
-    cell.textLabel.text = item[@"name"];
-    cell.detailTextLabel.text = item[@"size"];
+    NSDictionary *item = [_featuredArchives objectAtIndex:indexPath.row];
+    cell.textLabel.text = [item objectForKey:@"name"];
+    cell.detailTextLabel.text = [item objectForKey:@"size"];
 
     return cell;
 }
@@ -273,8 +273,8 @@
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 
-    NSDictionary *item = _featuredArchives[indexPath.row];
-    NSURL *url = [NSURL URLWithString:item[@"url"]];
+    NSDictionary *item = [_featuredArchives objectAtIndex:indexPath.row];
+    NSURL *url = [NSURL URLWithString:[item objectForKey:@"url"]];
     [self startDownloadURL:url fileName:[url lastPathComponent]];
 }
 
