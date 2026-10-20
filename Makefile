@@ -70,7 +70,7 @@ else
 # The iOS 9.3 SDK places the NSURL* loading classes in CFNetwork; on iOS 6 they live in Foundation and dyld aborts at
 # launch when the binary asks CFNetwork for them. Change CFNetwork reference to Foundation and resign.
 after-stage::
-	llvm-install-name-tool -change /System/Library/Frameworks/CFNetwork.framework/CFNetwork /System/Library/Frameworks/Foundation.framework/Foundation "$(WIKIE_STAGED_BIN)" || install_name_tool -change /System/Library/Frameworks/CFNetwork.framework/CFNetwork /System/Library/Frameworks/Foundation.framework/Foundation "$(WIKIE_STAGED_BIN)" || true
+	install_name_tool -change /System/Library/Frameworks/CFNetwork.framework/CFNetwork /System/Library/Frameworks/Foundation.framework/Foundation "$(WIKIE_STAGED_BIN)" || llvm-install-name-tool -change /System/Library/Frameworks/CFNetwork.framework/CFNetwork /System/Library/Frameworks/Foundation.framework/Foundation "$(WIKIE_STAGED_BIN)"
 	ldid -S"$(THEOS_PROJECT_DIR)/Resources/entitlements.plist" "$(WIKIE_STAGED_BIN)"
 endif
 

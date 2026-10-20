@@ -198,7 +198,10 @@ jobs:
           done
           clang -target $ARCH-apple-ios$MIN -isysroot "$THEOS/sdks/iPhoneOS$SDK.sdk" -Os -c vendor/zstd/zstddeclib.c -o /tmp/zim-test-objects/zstd.o
           clang -target $ARCH-apple-ios$MIN -isysroot "$THEOS/sdks/iPhoneOS$SDK.sdk" /tmp/zim-test-objects/*.o -framework Foundation -framework UIKit -framework CoreFoundation -framework CFNetwork -lobjc -lz -o packages/zim-selftest${{ matrix.suffix }}
-          if [ "$ARCH" = armv7 ]; then llvm-install-name-tool -change /System/Library/Frameworks/CFNetwork.framework/CFNetwork /System/Library/Frameworks/Foundation.framework/Foundation packages/zim-selftest; fi
+          if [ "$ARCH" = armv7 ]; then
+            install_name_tool -change /System/Library/Frameworks/CFNetwork.framework/CFNetwork /System/Library/Frameworks/Foundation.framework/Foundation packages/zim-selftest ||
+              llvm-install-name-tool -change /System/Library/Frameworks/CFNetwork.framework/CFNetwork /System/Library/Frameworks/Foundation.framework/Foundation packages/zim-selftest
+          fi
           ldid -SResources/entitlements.plist packages/zim-selftest${{ matrix.suffix }}
 
       - name: Upload Artifacts
