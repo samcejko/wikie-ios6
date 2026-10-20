@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <stdint.h>
 
 #define KW_MAX_REDIRECT_HOPS 5
 #define KW_CLUSTER_CACHE_SIZE 8
@@ -479,8 +480,17 @@
         return nil;
     }
 
-    size_t rawSize = (size_t)(clusterEnd - clusterStart);
+    uint64_t clusterSize = clusterEnd - clusterStart;
+    if (clusterSize > SIZE_MAX) {
+        if (error) *error = KWMakeError(KWErrorCorruptHeader, @"Cluster exceeds addressable size");
+        return nil;
+    }
+    size_t rawSize = (size_t)clusterSize;
     NSMutableData *rawData = [NSMutableData dataWithLength:rawSize];
+    if (!rawData) {
+        if (error) *error = KWMakeError(KWErrorIO, @"Cannot allocate cluster buffer");
+        return nil;
+    }
 
     __block BOOL readSuccess = NO;
     dispatch_sync(_ioQueue, ^{
@@ -501,6 +511,13 @@
     if (!cluster) return nil;
 
     @synchronized(_clusterCache) {
+        // Another reader may have populated this cluster while we decompressed it.
+        ZIMCluster *existing = [_clusterCache objectForKey:key];
+        if (existing) {
+            [_clusterLRU removeObject:key];
+            [_clusterLRU addObject:key];
+            return existing;
+        }
         if (_clusterLRU.count >= KW_CLUSTER_CACHE_SIZE) {
             NSNumber *oldestKey = [_clusterLRU objectAtIndex:0];
             [_clusterCache removeObjectForKey:oldestKey];
