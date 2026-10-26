@@ -1,4 +1,4 @@
-# Kiwix - offline Wikipedia and ZIM reader for jailbroken iOS 6.x (armv7).
+# Kiwix - offline Wikipedia and ZIM reader for jailbroken iOS 5-10 (armv7).
 # Built with Theos. Deployment target iOS 5.0, compiled against the iOS 9.3 SDK.
 
 ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
@@ -42,7 +42,7 @@ Wikie_CFLAGS := -Isrc -Isrc/ZIM -Isrc/Model -Isrc/Protocol -Isrc/UI \
                 -Wno-deprecated-declarations -Wno-unknown-warning-option \
                 -Wno-nullability-completeness -Wno-nullability-completeness-on-arrays -Wno-error
 
-Wikie_OBJCFLAGS := -fobjc-arc -Wunguarded-availability
+Wikie_OBJCFLAGS := -fobjc-arc -Wunguarded-availability -Werror=unguarded-availability
 
 Wikie_LDFLAGS := -lz
 

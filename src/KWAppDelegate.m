@@ -6,6 +6,7 @@
 #import "KWZIMURLProtocol.h"
 #import "KWWiFiUploadServer.h"
 #import "KWCommon.h"
+#import <QuartzCore/QuartzCore.h>
 
 @interface KWAppDelegate ()
 @property (nonatomic, copy) NSString *pendingArchivePath;
@@ -65,6 +66,15 @@
 {
     if (!url) return NO;
 
+    if([url.scheme isEqualToString:@"wikie"] && [[NSFileManager defaultManager] fileExistsAtPath:[[NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES) objectAtIndex:0] stringByAppendingPathComponent:@"debug"]]) {
+        NSString *command=url.resourceSpecifier;
+        if([command isEqualToString:@"snapshot"]) {
+            UIGraphicsBeginImageContextWithOptions(self.window.bounds.size,NO,0);
+            [self.window.layer renderInContext:UIGraphicsGetCurrentContext()];
+            UIImage *image=UIGraphicsGetImageFromCurrentImageContext();UIGraphicsEndImageContext();
+            [UIImagePNGRepresentation(image) writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"wikie-screen.png"] atomically:YES];return YES;
+        }
+    }
     if ([url isFileURL]) {
         NSString *path = [url path];
         if ([[[path pathExtension] lowercaseString] isEqualToString:@"zim"]) {

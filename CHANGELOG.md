@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.8
+
+- Restores opaque blue iOS 6 navigation and toolbar backgrounds on modern iOS, including scroll-edge states.
+- Retains iOS 5-10 compatibility and all 13 rounded app icons.
+- Corrects the package description to list the implemented compression formats.
+
+
 ## 1.0.6
 
 - Draws classic toolbar arrows without APIs that are unavailable on iOS 6.

@@ -1,4 +1,4 @@
-name: Build Wikie (iOS 6 armv7 + iOS 14 arm64)
+name: Build Wikie (iOS 5-10 armv7 + iOS 14 arm64)
 
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: ios6-armv7
+          - name: ios5-armv7
             scheme: ""
             suffix: ""
             artifact: Wikie-packages
@@ -47,7 +47,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential fakeroot rsync curl perl zip unzip git libplist-utils libxml2 xz-utils python3 llvm
+            build-essential fakeroot rsync curl perl zip unzip git libplist-utils libxml2 xz-utils python3 python3-pil llvm
 
       - name: Restore Theos cache
         id: theos-cache
@@ -212,6 +212,7 @@ jobs:
           path: |
             packages/*.ipa
             packages/*.deb
+            packages/zim-selftest*
 
       - name: Upload Build Log
         if: always()
@@ -223,7 +224,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Publish packages to the CI prerelease
-        if: inputs.compatibility_min == ''
+        if: github.ref == 'refs/heads/main' && inputs.compatibility_min == ''
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}

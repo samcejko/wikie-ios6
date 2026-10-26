@@ -1,5 +1,7 @@
 #import "KWClassicAppearance.h"
 #import <UIKit/UIKit.h>
+// Every post-iOS-5 call below is behind the iOS 7 check or a version + SDK guard.
+#pragma clang diagnostic ignored "-Wunguarded-availability"
 
 static UIImage *KWGradientImage(CGSize size, const CGFloat *colors, size_t stops, BOOL rounded)
 {
@@ -127,6 +129,29 @@ static UIImage *KWSearchFieldImage(void)
     [[UISearchBar appearance] setBackgroundImage:searchImage];
     [[UISearchBar appearance] setSearchFieldBackgroundImage:KWSearchFieldImage() forState:UIControlStateNormal];
     [[UISearchBar appearance] setTranslucent:NO];
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
+    if (@available(iOS 13.0, *)) {
+        UINavigationBarAppearance *navigation=[[UINavigationBarAppearance alloc] init];
+        [navigation configureWithOpaqueBackground];
+        navigation.backgroundImage=barImage;
+        navigation.backgroundColor=[UIColor colorWithRed:0.39 green:0.53 blue:0.72 alpha:1];
+        navigation.shadowColor=[UIColor colorWithWhite:0.18 alpha:0.75];
+        navigation.titleTextAttributes=titleAttributes;
+        navigation.largeTitleTextAttributes=titleAttributes;
+        for(UIBarButtonItemAppearance *button in @[navigation.buttonAppearance,navigation.backButtonAppearance,navigation.doneButtonAppearance]) {
+            button.normal.titleTextAttributes=buttonTitle;button.highlighted.titleTextAttributes=buttonTitle;
+            button.normal.backgroundImage=KWButtonImage(NO);button.highlighted.backgroundImage=KWButtonImage(YES);
+        }
+        UINavigationBar *proxy=[UINavigationBar appearance];
+        proxy.standardAppearance=navigation;proxy.compactAppearance=navigation;proxy.scrollEdgeAppearance=navigation;
+        if (@available(iOS 15.0, *))proxy.compactScrollEdgeAppearance=navigation;
+        UIToolbarAppearance *toolbar=[[UIToolbarAppearance alloc] init];[toolbar configureWithOpaqueBackground];
+        toolbar.backgroundImage=toolbarImage;toolbar.backgroundColor=navigation.backgroundColor;
+        toolbar.buttonAppearance.normal.titleTextAttributes=buttonTitle;toolbar.doneButtonAppearance.normal.titleTextAttributes=buttonTitle;
+        UIToolbar *toolProxy=[UIToolbar appearance];toolProxy.standardAppearance=toolbar;toolProxy.compactAppearance=toolbar;
+        if (@available(iOS 15.0, *)) {toolProxy.scrollEdgeAppearance=toolbar;toolProxy.compactScrollEdgeAppearance=toolbar;}
+    }
+#endif
     [[UITableView appearance] setSeparatorColor:[UIColor colorWithRed:0.78 green:0.78 blue:0.80 alpha:1.0]];
 }
 

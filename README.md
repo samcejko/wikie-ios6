@@ -1,6 +1,6 @@
-# Wikie for iOS 6
+# Wikie for iOS 5–10
 
-Offline Wikipedia and OpenZIM reader for iOS 6.0 – 6.1.6 (ARMv7), crafted for jailbroken legacy devices.
+Offline Wikipedia and OpenZIM reader for iOS 5.0 – 10.x (ARMv7), crafted for jailbroken legacy devices.
 
 Turn your vintage iPhone, iPod touch, or iPad into a completely self-contained offline encyclopedia.
 
@@ -33,7 +33,7 @@ Turn your vintage iPhone, iPod touch, or iPad into a completely self-contained o
 - **iPhone**: iPhone 3GS, iPhone 4, iPhone 4S, iPhone 5
 - **iPad**: iPad 1, iPad 2, iPad 3, iPad 4, iPad mini 1
 - **iPod touch**: iPod touch 4th gen, iPod touch 5th gen
-- **OS**: iOS 6.0 – 6.1.6 (jailbroken with Cydia / AppSync / Nitro JIT entitlement)
+- **OS**: iOS 5.0 – 10.x (jailbroken with Cydia / AppSync / Nitro JIT entitlement)
 
 ---
 
@@ -41,7 +41,7 @@ Turn your vintage iPhone, iPod touch, or iPad into a completely self-contained o
 
 ```
 kiwix-ios6/
-├── Makefile                # Theos build configuration (target: iphone:clang:9.3:6.0)
+├── Makefile                # Theos build configuration (target: iphone:clang:9.3:5.0)
 ├── control                 # Cydia deb package metadata
 ├── Resources/
 │   ├── Info.plist          # Enables UIFileSharingEnabled, file associations
