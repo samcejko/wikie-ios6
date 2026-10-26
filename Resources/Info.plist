@@ -125,6 +125,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>wikie</string>
+				<string>zim</string>
 			</array>
 		</dict>
 	</array>

@@ -130,7 +130,7 @@ static UIImage *KWSearchFieldImage(void)
     [[UISearchBar appearance] setSearchFieldBackgroundImage:KWSearchFieldImage() forState:UIControlStateNormal];
     [[UISearchBar appearance] setTranslucent:NO];
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 130000
-    if (@available(iOS 13.0, *)) {
+    if (version.integerValue >= 13) {
         UINavigationBarAppearance *navigation=[[UINavigationBarAppearance alloc] init];
         [navigation configureWithOpaqueBackground];
         navigation.backgroundImage=barImage;
@@ -144,12 +144,12 @@ static UIImage *KWSearchFieldImage(void)
         }
         UINavigationBar *proxy=[UINavigationBar appearance];
         proxy.standardAppearance=navigation;proxy.compactAppearance=navigation;proxy.scrollEdgeAppearance=navigation;
-        if (@available(iOS 15.0, *))proxy.compactScrollEdgeAppearance=navigation;
+        if (version.integerValue >= 15)proxy.compactScrollEdgeAppearance=navigation;
         UIToolbarAppearance *toolbar=[[UIToolbarAppearance alloc] init];[toolbar configureWithOpaqueBackground];
         toolbar.backgroundImage=toolbarImage;toolbar.backgroundColor=navigation.backgroundColor;
         toolbar.buttonAppearance.normal.titleTextAttributes=buttonTitle;toolbar.doneButtonAppearance.normal.titleTextAttributes=buttonTitle;
         UIToolbar *toolProxy=[UIToolbar appearance];toolProxy.standardAppearance=toolbar;toolProxy.compactAppearance=toolbar;
-        if (@available(iOS 15.0, *)) {toolProxy.scrollEdgeAppearance=toolbar;toolProxy.compactScrollEdgeAppearance=toolbar;}
+        if (version.integerValue >= 15) {toolProxy.scrollEdgeAppearance=toolbar;toolProxy.compactScrollEdgeAppearance=toolbar;}
     }
 #endif
     [[UITableView appearance] setSeparatorColor:[UIColor colorWithRed:0.78 green:0.78 blue:0.80 alpha:1.0]];
